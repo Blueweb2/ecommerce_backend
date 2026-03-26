@@ -1,5 +1,5 @@
 import { Cart } from "./cart.model";
-import { Product } from "../product/product.model";
+import Product from "../product/product.model";
 import { AppError } from "../../utils/AppError";
 
 const calculateCartTotals = (items: any[]) => {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getSignature } from "./cloudinary.controller";
+import { getSignature, deleteImageHandler  } from "./cloudinary.controller";
 
 const router = Router();
 
