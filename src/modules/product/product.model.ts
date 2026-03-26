@@ -1,0 +1,203 @@
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface IProductImage {
+  url: string;
+  altText?: string;
+  public_id?: string;
+  isPrimary?: boolean;
+}
+
+export interface IProductVariant {
+  size?: string;
+  color?: string;
+  price?: number;
+  discountPrice?: number;
+  stock: number;
+  sku?: string;
+  images?: IProductImage[];
+  isActive: boolean;
+}
+
+export interface IProduct extends Document {
+  name: string;
+  slug: string;
+  sku: string;
+  description: string;
+  price: number;
+  discountPrice?: number;
+  category: mongoose.Types.ObjectId;
+  sections: string[];
+  brand?: string;
+  stock: number;
+  images: IProductImage[];
+  variants: IProductVariant[];
+  isPublished: boolean;
+  ratingsAverage: number;
+  ratingsCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const productSchema = new Schema<IProduct>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    slug: { 
+      type: String, 
+      required: true, 
+      unique: true,
+      lowercase: true,
+    },
+    sku: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      index: true,
+    },
+    description: { 
+      type: String, 
+      required: true,
+      trim: true,
+    },
+    price: { 
+      type: Number, 
+      required: true,
+      min: 0,
+    },
+    discountPrice: { 
+      type: Number,
+      min: 0,
+    },
+    category: {
+      type: Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+      index: true,
+    },
+    sections: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      },
+    ],
+    brand: {
+      type: String,
+      trim: true,
+    },
+    stock: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    images: [
+      {
+        url: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        altText: {
+          type: String,
+          trim: true,
+          default: "",
+        },
+        public_id: {
+          type: String,
+          trim: true,
+        },
+        isPrimary: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+    variants: [
+      {
+        size: {
+          type: String,
+          trim: true,
+        },
+        color: {
+          type: String,
+          trim: true,
+        },
+        price: {
+          type: Number,
+          min: 0,
+        },
+        discountPrice: {
+          type: Number,
+          min: 0,
+        },
+        stock: {
+          type: Number,
+          required: true,
+          default: 0,
+          min: 0,
+        },
+        sku: {
+          type: String,
+          trim: true,
+          uppercase: true,
+        },
+        images: [
+          {
+            url: {
+              type: String,
+              trim: true,
+            },
+            altText: {
+              type: String,
+              trim: true,
+              default: "",
+            },
+            public_id: {
+              type: String,
+              trim: true,
+            },
+            isPrimary: {
+              type: Boolean,
+              default: false,
+            },
+          },
+        ],
+        isActive: {
+          type: Boolean,
+          default: true,
+        },
+      },
+    ],
+    isPublished: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    ratingsAverage: {
+      type: Number, 
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    ratingsCount: { 
+      type: Number, 
+      default: 0,
+      min: 0,
+    },
+  },
+  { 
+    timestamps: true,
+  }
+);
+
+// Text index for search
+productSchema.index({ name: "text", description: "text", brand: "text" });
+
+// Index for queries
+productSchema.index({ category: 1, sections: 1, isPublished: 1 });
+const Product = mongoose.model("Product", productSchema);
+export default Product;
