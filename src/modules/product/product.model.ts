@@ -8,8 +8,7 @@ export interface IProductImage {
 }
 
 export interface IProductVariant {
-  size?: string;
-  color?: string;
+  attributes: Record<string, string>;
   price?: number;
   discountPrice?: number;
   stock: number;
@@ -30,6 +29,10 @@ export interface IProduct extends Document {
   brand?: string;
   stock: number;
   images: IProductImage[];
+  attributes: {
+    name: string;
+    values: string[];
+  }[];
   variants: IProductVariant[];
   isPublished: boolean;
   ratingsAverage: number;
@@ -37,6 +40,53 @@ export interface IProduct extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+const variantSchema = new Schema<IProductVariant>(
+  {
+    attributes: {
+      type: Map,
+      of: String,
+      required: true,
+    },
+
+    price: {
+      type: Number,
+      min: 0,
+    },
+
+    discountPrice: {
+      type: Number,
+      min: 0,
+    },
+
+    stock: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+
+    sku: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+
+    images: [
+      {
+        url: String,
+        altText: String,
+        public_id: String,
+        isPrimary: Boolean,
+      },
+    ],
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { _id: false }
+);
 
 const productSchema = new Schema<IProduct>(
   {
@@ -45,9 +95,9 @@ const productSchema = new Schema<IProduct>(
       required: true,
       trim: true,
     },
-    slug: { 
-      type: String, 
-      required: true, 
+    slug: {
+      type: String,
+      required: true,
       unique: true,
       lowercase: true,
     },
@@ -58,17 +108,17 @@ const productSchema = new Schema<IProduct>(
       uppercase: true,
       index: true,
     },
-    description: { 
-      type: String, 
+    description: {
+      type: String,
       required: true,
       trim: true,
     },
-    price: { 
-      type: Number, 
+    price: {
+      type: Number,
       required: true,
       min: 0,
     },
-    discountPrice: { 
+    discountPrice: {
       type: Number,
       min: 0,
     },
@@ -116,80 +166,45 @@ const productSchema = new Schema<IProduct>(
         },
       },
     ],
-    variants: [
+
+
+    attributes: [
       {
-        size: {
+        name: {
           type: String,
-          trim: true,
-        },
-        color: {
-          type: String,
-          trim: true,
-        },
-        price: {
-          type: Number,
-          min: 0,
-        },
-        discountPrice: {
-          type: Number,
-          min: 0,
-        },
-        stock: {
-          type: Number,
           required: true,
-          default: 0,
-          min: 0,
-        },
-        sku: {
-          type: String,
           trim: true,
-          uppercase: true,
         },
-        images: [
+        values: [
           {
-            url: {
-              type: String,
-              trim: true,
-            },
-            altText: {
-              type: String,
-              trim: true,
-              default: "",
-            },
-            public_id: {
-              type: String,
-              trim: true,
-            },
-            isPrimary: {
-              type: Boolean,
-              default: false,
-            },
+            type: String,
+            trim: true,
           },
         ],
-        isActive: {
-          type: Boolean,
-          default: true,
-        },
       },
     ],
+    variants: {
+      type: [variantSchema],
+      default: [],
+    },
     isPublished: {
       type: Boolean,
       default: true,
       index: true,
     },
     ratingsAverage: {
-      type: Number, 
+      type: Number,
       default: 0,
       min: 0,
       max: 5,
     },
-    ratingsCount: { 
-      type: Number, 
+    ratingsCount: {
+      type: Number,
       default: 0,
       min: 0,
     },
   },
-  { 
+  {
     timestamps: true,
   }
 );

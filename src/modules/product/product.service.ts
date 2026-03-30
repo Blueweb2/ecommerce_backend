@@ -24,48 +24,126 @@ const generateSKU = (categoryName?: string, brandName?: string): string => {
 
 export const createProduct = async (data: CreateProductDTO) => {
   const slug = generateSlug(data.name);
-  
-  // Check if slug already exists
+
+  // 🔹 Check duplicate slug
   const existingProduct = await Product.findOne({ slug });
   if (existingProduct) {
     throw new AppError("A product with this name already exists", 409);
   }
 
-  // Generate or use provided SKU
+  // 🔹 Generate or validate product SKU
   let sku = data.sku;
+
   if (!sku) {
-    // Generate SKU with retry logic in case of collision
     let attempts = 0;
     const maxAttempts = 10;
+
     while (attempts < maxAttempts) {
       sku = generateSKU(data.category, data.brand);
+
       const existingSKU = await Product.findOne({ sku });
       if (!existingSKU) break;
+
       attempts++;
     }
+
     if (attempts === maxAttempts) {
       throw new AppError("Could not generate unique SKU", 500);
     }
   } else {
-    // Check if provided SKU already exists
     const existingSKU = await Product.findOne({ sku });
     if (existingSKU) {
       throw new AppError("SKU already exists", 409);
     }
   }
 
-  // Handle variants - generate SKUs if not provided
-  const processedVariants = data.variants?.map((variant) => {
-    if (!variant.sku) {
-      // Generate variant SKU: BASE_PRODUCT_SKU-SIZE-COLOR
-      const sizePrefix = variant.size ? variant.size.substring(0, 2).toUpperCase() : "XX";
-      const colorPrefix = variant.color ? variant.color.substring(0, 2).toUpperCase() : "XX";
-      variant.sku = `${sku}-${sizePrefix}-${colorPrefix}`;
+  // 🔥 STEP 1: Validate attributes vs variants
+  if (data.attributes && data.variants) {
+    const validAttributes = new Set(data.attributes.map((a) => a.name));
+
+    for (const variant of data.variants) {
+      for (const key of Object.keys(variant.attributes || {})) {
+        if (!validAttributes.has(key)) {
+          throw new AppError(`Invalid attribute: ${key}`, 400);
+        }
+      }
     }
+  }
+
+  // 🔥 STEP 2: Normalize + process variants
+  const processedVariants = data.variants?.map((variant) => {
+    // Normalize attributes
+    const normalizedAttributes = Object.fromEntries(
+      Object.entries(variant.attributes || {}).map(([key, value]) => [
+        key.trim(),
+        value.trim(),
+      ])
+    );
+
+    variant.attributes = normalizedAttributes;
+
+    // 🔥 Sort attributes for consistent SKU
+    const sortedEntries = Object.entries(normalizedAttributes).sort(
+      ([a], [b]) => a.localeCompare(b)
+    );
+
+    // Generate SKU if not provided
+    if (!variant.sku) {
+      const attributePrefix = sortedEntries
+        .map(([, val]) => val.substring(0, 2).toUpperCase())
+        .join("-") || "XX";
+
+      variant.sku = `${sku}-${attributePrefix}`;
+    }
+
     return variant;
   });
 
-  return await Product.create({ ...data, slug, sku, variants: processedVariants });
+  // 🔥 STEP 3: Prevent duplicate variant combinations
+  if (processedVariants) {
+    const seen = new Set();
+
+    for (const variant of processedVariants) {
+      const key = JSON.stringify(variant.attributes);
+
+      if (seen.has(key)) {
+        throw new AppError("Duplicate variant combination", 400);
+      }
+
+      seen.add(key);
+    }
+  }
+
+  // 🔥 STEP 4: Prevent duplicate variant SKUs
+  if (processedVariants) {
+    const skuSet = new Set();
+
+    for (const variant of processedVariants) {
+      if (variant.sku && skuSet.has(variant.sku)) {
+        throw new AppError("Duplicate variant SKU generated", 400);
+      }
+
+      if (variant.sku) {
+        skuSet.add(variant.sku);
+      }
+    }
+  }
+
+  // 🔥 STEP 5: Auto-calculate product stock
+  if (processedVariants && processedVariants.length > 0) {
+    data.stock = processedVariants.reduce(
+      (sum, v) => sum + (v.stock || 0),
+      0
+    );
+  }
+
+  // 🔥 FINAL CREATE
+  return await Product.create({
+    ...data,
+    slug,
+    sku,
+    variants: processedVariants,
+  });
 };
 
 export const getAllProducts = async (

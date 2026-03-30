@@ -7,7 +7,9 @@ export const createCategorySchema = z.object({
     .union([
       z.string().regex(/^[a-f\d]{24}$/i, "Parent must be a valid category id"),
       z.null(),
+      z.literal(""),
     ])
+    .transform((val) => (val === "" ? null : val))
     .optional(),
   image: z
     .object({

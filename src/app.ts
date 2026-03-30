@@ -3,15 +3,18 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middlewares/errorHandler";
 import routes from "./routes";
+import { env } from "./config/env";
 
 const app = express();
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: env.CLIENT_URL,
     credentials: true,
   })
 );
+
+console.log(env.CLIENT_URL, "client url")
 
 app.use(express.json());
 app.use(cookieParser());

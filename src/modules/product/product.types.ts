@@ -5,40 +5,77 @@ export interface ProductImageDTO {
   isPrimary?: boolean;
 }
 
+export interface ProductAttributeDTO {
+  name: string;
+  values: string[];
+}
+
 export interface ProductVariantDTO {
-  size?: string;
-  color?: string;
+  attributes: Record<string, string>;
+
   price?: number;
   discountPrice?: number;
   stock: number;
   sku?: string;
+
   images?: ProductImageDTO[];
+
   isActive?: boolean;
 }
 
 export interface CreateProductDTO {
   name: string;
   description: string;
+
   price: number;
   discountPrice?: number;
-  category: string; // Category ObjectId
-  sections?: string[]; // dynamic sections/tags
+
+  category: string;
+  sections?: string[];
+
   brand?: string;
+  sku?: string;
+
   stock: number;
+
   images?: ProductImageDTO[];
+
+  attributes?: ProductAttributeDTO[];
+
   variants?: ProductVariantDTO[];
+
   isPublished?: boolean;
-  sku?: string; // Auto-generated if not provided
 }
 
 export interface UpdateProductDTO extends Partial<CreateProductDTO> {}
 
-export interface ProductResponse extends CreateProductDTO {
+export interface ProductResponse {
   _id: string;
+  name: string;
   slug: string;
   sku: string;
+  description: string;
+
+  price: number;
+  discountPrice?: number;
+
+  category: string;
+  sections: string[];
+
+  brand?: string;
+
+  stock: number;
+
+  images: ProductImageDTO[];
+
+  attributes: ProductAttributeDTO[];
+  variants: ProductVariantDTO[];
+
+  isPublished: boolean;
+
   ratingsAverage: number;
   ratingsCount: number;
+
   createdAt: string;
   updatedAt: string;
 }
