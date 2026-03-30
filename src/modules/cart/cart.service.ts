@@ -1,5 +1,5 @@
 import { Cart } from "./cart.model";
-import Product from "../product/product.model";
+import {Product} from "../product/product.model";
 import { AppError } from "../../utils/AppError";
 
 const calculateCartTotals = (items: any[]) => {
@@ -13,43 +13,81 @@ const calculateCartTotals = (items: any[]) => {
 };
 
 export const getCart = async (userId: string) => {
-  return await Cart.findOne({ user: userId }).populate("items.product");
+  return await Cart.findOne({ user: userId }).populate("items.product").lean();
 };
 
-export const addToCart = async (userId: string, productId: string, quantity: number) => {
+export const addToCart = async (
+  userId: string,
+  productId: string,
+  quantity: number
+) => {
   let cart = await Cart.findOne({ user: userId });
 
   const product = await Product.findById(productId);
-  if (!product) {
-    throw new AppError("Product not found", 404);
-  }
-
-  if (product.stock < quantity) {
-    throw new AppError("Insufficient stock", 400);
-  }
+  if (!product) throw new AppError("Product not found", 404);
 
   if (!cart) {
-    cart = await Cart.create({
-      user: userId,
-      items: [
-        {
-          product: productId,
-          quantity,
-          price: product.price,
-        },
-      ],
-    });
+    cart = await Cart.create({ user: userId, items: [] });
+  }
+
+  const existingItem = cart.items.find(
+    (item) => item.product.toString() === productId
+  );
+
+  if (existingItem) {
+    const newQty = existingItem.quantity + quantity;
+
+    if (product.stock < newQty) {
+      throw new AppError("Insufficient stock", 400);
+    }
+
+    existingItem.quantity = newQty;
   } else {
-    const existingItem = cart.items.find(
-      (item) => item.product.toString() === productId
+    if (product.stock < quantity) {
+      throw new AppError("Insufficient stock", 400);
+    }
+
+    cart.items.push({
+      product: productId as any,
+      quantity,
+      price: product.price,
+    });
+  }
+
+  const totals = calculateCartTotals(cart.items);
+  cart.totalPrice = totals.totalPrice;
+  cart.totalQuantity = totals.totalQuantity;
+
+  return await cart.save();
+};
+
+export const mergeCart = async (userId: string, items: any[]) => {
+  let cart = await Cart.findOne({ user: userId });
+
+  if (!cart) {
+    cart = await Cart.create({ user: userId, items: [] });
+  }
+
+  for (const incoming of items) {
+    const product = await Product.findById(incoming.productId);
+    if (!product) continue;
+
+    const existing = cart.items.find(
+      (i) => i.product.toString() === incoming.productId
     );
 
-    if (existingItem) {
-      existingItem.quantity += quantity;
+    if (existing) {
+      const newQty = existing.quantity + incoming.quantity;
+
+      if (product.stock < newQty) continue;
+
+      existing.quantity = newQty;
     } else {
+      if (product.stock < incoming.quantity) continue;
+
       cart.items.push({
-        product: productId as any,
-        quantity,
+        product: incoming.productId,
+        quantity: incoming.quantity,
         price: product.price,
       });
     }

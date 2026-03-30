@@ -4,6 +4,7 @@ import {
   getCategoriesHandler,
   getCategoryHandler,
   getCategoryBySlugHandler,
+  getCategoryTreeHandler,
   updateCategoryHandler,
   deleteCategoryHandler,
 } from "./category.controller";
@@ -19,6 +20,7 @@ const router = Router();
 
 // Public routes
 router.get("/", getCategoriesHandler);
+router.get("/tree", getCategoryTreeHandler);
 router.get("/slug/:slug", getCategoryBySlugHandler);
 router.get("/:id", getCategoryHandler);
 

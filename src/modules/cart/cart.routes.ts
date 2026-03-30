@@ -5,6 +5,7 @@ import {
   updateCartItemHandler,
   removeFromCartHandler,
   clearCartHandler,
+  mergeCartHandler,
 } from "./cart.controller";
 
 import { protect } from "../../middlewares/auth";
@@ -29,5 +30,7 @@ router.delete("/:productId", removeFromCartHandler);
 
 // Clear entire cart (must come AFTER /:productId routes)
 router.delete("/", clearCartHandler);
+
+router.post("/merge", protect, mergeCartHandler);
 
 export default router;

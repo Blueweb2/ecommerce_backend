@@ -6,7 +6,9 @@ import { asyncHandler } from "../../utils/asyncHandler";
 export const getSignature = (req: Request, res: Response) => {
   const timestamp = Math.round(Date.now() / 1000);
 
-  const paramsToSign = `folder=products&timestamp=${timestamp}${process.env.CLOUD_API_SECRET}`;
+  const folder = req.query.folder || "products"; // ✅ dynamic
+
+  const paramsToSign = `folder=${folder}&timestamp=${timestamp}${process.env.CLOUD_API_SECRET}`;
 
   const signature = crypto
     .createHash("sha1")
@@ -18,6 +20,7 @@ export const getSignature = (req: Request, res: Response) => {
     signature,
     cloudName: process.env.CLOUD_NAME,
     apiKey: process.env.CLOUD_API_KEY,
+    folder, // optional but useful
   });
 };
 

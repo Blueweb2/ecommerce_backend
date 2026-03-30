@@ -6,26 +6,44 @@ import { sendResponse } from "../../utils/response";
 
 export const getCartHandler = asyncHandler(
   async (req: Request, res: Response) => {
-    const cart = await cartService.getCart((req as any).user.id);
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const cart = await cartService.getCart(userId);
     sendResponse(res, 200, "Cart fetched successfully", cart);
   }
 );
 
 export const addToCartHandler = asyncHandler(
   async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
     const { productId, quantity } = req.body;
-    const cart = await cartService.addToCart((req as any).user.id, productId, quantity);
+    const cart = await cartService.addToCart(userId, productId, quantity);
     sendResponse(res, 200, "Item added to cart", cart);
   }
 );
 
 export const updateCartItemHandler = asyncHandler(
   async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
     const productId = req.params.productId as string;
     const { quantity } = req.body;
 
     const cart = await cartService.updateCartItem(
-      (req as any).user.id,
+      userId,
       productId,
       quantity
     );
@@ -36,8 +54,14 @@ export const updateCartItemHandler = asyncHandler(
 
 export const removeFromCartHandler = asyncHandler(
   async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
     const productId = req.params.productId as string;
-    const cart = await cartService.removeFromCart((req as any).user.id, productId);
+    const cart = await cartService.removeFromCart(userId, productId);
 
     sendResponse(res, 200, "Item removed from cart", cart);
   }
@@ -45,7 +69,27 @@ export const removeFromCartHandler = asyncHandler(
 
 export const clearCartHandler = asyncHandler(
   async (req: Request, res: Response) => {
-    const cart = await cartService.clearCart((req as any).user.id);
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const cart = await cartService.clearCart(userId);
     sendResponse(res, 200, "Cart cleared", cart);
   }
 );
+
+export const mergeCartHandler = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const { items } = req.body;
+
+  const cart = await cartService.mergeCart(userId, items);
+
+  sendResponse(res, 200, "Cart merged successfully", cart);
+});

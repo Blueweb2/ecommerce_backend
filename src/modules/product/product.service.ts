@@ -1,4 +1,4 @@
-import Product from "./product.model";
+import {Product }from "./product.model";
 import { CreateProductDTO, UpdateProductDTO } from "./product.types";
 import { AppError } from "../../utils/AppError";
 import { deleteImageFromCloudinary } from "../cloudinary/cloudinary.service";

@@ -3,7 +3,7 @@ import * as productService from "./product.service";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { sendResponse } from "../../utils/response";
-import Product from "./product.model";
+import {Product} from "./product.model";
 
 
 const asString = (

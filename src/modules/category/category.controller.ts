@@ -11,6 +11,13 @@ export const createCategoryHandler = asyncHandler(
   }
 );
 
+export const getCategoryTreeHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const tree = await categoryService.getCategoryTree();
+    sendResponse(res, 200, "Category tree fetched", tree);
+  }
+);
+
 export const getCategoriesHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const categories = await categoryService.getAllCategories();

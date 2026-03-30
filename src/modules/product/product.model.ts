@@ -199,5 +199,4 @@ productSchema.index({ name: "text", description: "text", brand: "text" });
 
 // Index for queries
 productSchema.index({ category: 1, sections: 1, isPublished: 1 });
-const Product = mongoose.model("Product", productSchema);
-export default Product;
+export const Product = mongoose.model<IProduct>("Product", productSchema);

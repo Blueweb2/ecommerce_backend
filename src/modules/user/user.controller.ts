@@ -3,7 +3,7 @@ import * as userService from "./user.service";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { sendResponse } from "../../utils/response";
-import { generateToken } from "../../config/jwt";
+import { signAccessToken as generateToken } from "../../config/jwt";
 
 /* =========================
    REGISTER

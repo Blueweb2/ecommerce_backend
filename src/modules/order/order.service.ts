@@ -1,6 +1,6 @@
 import { Order } from "./order.model";
 import { Cart } from "../cart/cart.model";
-import Product from "../product/product.model";
+import {Product} from "../product/product.model";
 import { CreateOrderDTO } from "./order.types";
 import { AppError } from "../../utils/AppError";
 

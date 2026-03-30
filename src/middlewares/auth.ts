@@ -1,26 +1,52 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction, Request, Response } from "express";
+import { verifyAccessToken } from "../config/jwt";
+import { User } from "../modules/user/user.model";
 import { AppError } from "../utils/AppError";
-import { verifyToken } from "../config/jwt";
+
+interface JwtPayload {
+  id: string;
+  role: string;
+}
 
 declare global {
   namespace Express {
     interface Request {
-      user?: any;
+      user?: JwtPayload;
     }
   }
 }
 
+export const protect = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  let token: string | undefined;
 
-export const protect = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.headers.authorization?.split(" ")[1];
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
+  }
 
   if (!token) {
     return next(new AppError("No token provided", 401));
   }
 
   try {
-    const decoded = verifyToken(token);
-    req.user = decoded;
+    const decoded = verifyAccessToken(token) as JwtPayload;
+    const user = await User.findById(decoded.id).select("_id role");
+
+    if (!user) {
+      return next(new AppError("User no longer exists", 401));
+    }
+
+    req.user = {
+      id: user._id.toString(),
+      role: user.role,
+    };
+
     next();
   } catch {
     return next(new AppError("Invalid or expired token", 401));
@@ -30,10 +56,14 @@ export const protect = (req: Request, res: Response, next: NextFunction) => {
 export const restrictTo =
   (...roles: string[]) =>
   (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user?.role || !roles.includes(req.user.role)) {
       return next(
-        new AppError("You do not have permission to perform this action", 403)
+        new AppError(
+          "You do not have permission to perform this action",
+          403
+        )
       );
     }
+
     next();
   };
