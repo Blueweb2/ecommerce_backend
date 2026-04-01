@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { Types } from "mongoose";
 
 export interface IProductImage {
   url: string;
@@ -211,6 +212,7 @@ const productSchema = new Schema<IProduct>(
 
 // Text index for search
 productSchema.index({ name: "text", description: "text", brand: "text" });
+productSchema.index({ "variants.sku": 1 }, { unique: true });
 
 // Index for queries
 productSchema.index({ category: 1, sections: 1, isPublished: 1 });

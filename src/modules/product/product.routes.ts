@@ -9,15 +9,14 @@ import {
   searchProductsHandler,
   getFeaturedProductsHandler,
   getProductVariantsHandler,
-  getVariantBySKUHandler,
   updateProductStockHandler,
   deleteSingleImageHandler,
 } from "./product.controller";
+
 import { upload } from "../../middlewares/upload";
-
-
 import { validate } from "../../middlewares/validate";
 import { protect, restrictTo } from "../../middlewares/auth";
+
 import {
   createProductSchema,
   updateProductSchema,
@@ -25,36 +24,66 @@ import {
 
 const router = Router();
 
-// Public routes (must come BEFORE /:id route)
+
+// ======================================================
+// ✅ PUBLIC ROUTES
+// ======================================================
+
+// Order matters (specific → general)
 router.get("/featured", getFeaturedProductsHandler);
 router.get("/search", searchProductsHandler);
 router.get("/slug/:slug", getProductBySlugHandler);
-router.get("/variant/:sku", getVariantBySKUHandler);
 router.get("/:id/variants", getProductVariantsHandler);
 router.get("/", getProductsHandler);
 router.get("/:id", getProductHandler);
 
-// Protected routes (admin only)
-router.post("/", protect, restrictTo("admin", "superadmin"), validate(createProductSchema), createProductHandler);
-router.put("/:id", protect, restrictTo("admin", "superadmin"), validate(updateProductSchema), updateProductHandler);
-router.put("/:id/stock", protect, restrictTo("admin", "superadmin"), updateProductStockHandler);
-router.delete("/:id", protect, restrictTo("admin", "superadmin"), deleteProductHandler);
 
+// ======================================================
+// 🔐 ADMIN ROUTES
+// ======================================================
 
 router.post(
   "/",
   protect,
   restrictTo("admin", "superadmin"),
-  upload.array("images", 5), // max 5 images
+  upload.array("images", 5),
   validate(createProductSchema),
   createProductHandler
 );
 
+router.put(
+  "/:id",
+  protect,
+  restrictTo("admin", "superadmin"),
+  validate(updateProductSchema),
+  updateProductHandler
+);
+
+router.put(
+  "/:id/stock",
+  protect,
+  restrictTo("admin", "superadmin"),
+  updateProductStockHandler
+);
+
+router.delete(
+  "/:id",
+  protect,
+  restrictTo("admin", "superadmin"),
+  deleteProductHandler
+);
+
+
+// ======================================================
+// 🖼 IMAGE MANAGEMENT
+// ======================================================
+
 router.delete(
   "/:productId/image/:imageId",
   protect,
-  restrictTo("admin"),
+  restrictTo("admin", "superadmin"),
   deleteSingleImageHandler
 );
+
 
 export default router;
