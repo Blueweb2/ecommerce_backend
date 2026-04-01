@@ -1,4 +1,4 @@
-import { SKUCounter } from "@/models/skuCounter.model";
+import { SKUCounter } from "../../models/skuCounter.model";
 
 export const getNextSequence = async (prefix: string) => {
   const counter = await SKUCounter.findOneAndUpdate(
