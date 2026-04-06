@@ -47,7 +47,6 @@ router.post(
   protect,
   restrictTo("admin", "superadmin"),
   upload.array("images", 5),
-  validate(createProductSchema),
   createProductHandler
 );
 

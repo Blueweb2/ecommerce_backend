@@ -4,43 +4,38 @@ import { AppError } from "../../utils/AppError";
 import { deleteImageFromCloudinary } from "../cloudinary/cloudinary.service";
 import { generateSmartSKU } from "../../utils/sku/sku.generator";
 import { toStringId } from "../../utils/common/toStringId";
+import slugify from "slugify";
 
-
-// 🔹 Generate slug
-const generateSlug = (name: string): string => {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-};
 
 // 🔹 Normalize attributes (important for comparison)
-const normalizeAttributes = (attrs: Record<string, string>) => {
+const normalizeAttributes = (attrs?: Record<string, string>) => {
+  if (!attrs) return "{}";
+
   return JSON.stringify(
     Object.keys(attrs)
       .sort()
       .reduce((acc, key) => {
-        acc[key] = attrs[key].trim();
+        acc[key] = attrs[key]?.trim().toLowerCase() || "";
         return acc;
       }, {} as Record<string, string>)
   );
 };
-
-
+// 🔹 Generate slug
 
 // ======================================================
 // ✅ CREATE PRODUCT
 // ======================================================
 
-export const createProduct = async (data: CreateProductDTO) => {
-  const slug = generateSlug(data.name);
 
-  // 🔹 Check duplicate slug
-  const existing = await Product.findOne({ slug });
-  if (existing) {
-    throw new AppError("Product with this name already exists", 409);
+export const createProduct = async (data: CreateProductDTO) => {
+  // 🔥 SLUG (correct)
+  const baseSlug = slugify(data.name, { lower: true, strict: true });
+
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (await Product.findOne({ slug })) {
+    slug = `${baseSlug}-${counter++}`;
   }
 
   // 🔥 Validate attribute keys
@@ -56,30 +51,35 @@ export const createProduct = async (data: CreateProductDTO) => {
     }
   }
 
+  if (!data.variants?.length) {
+  data.sku = await generateSmartSKU({
+    category: data.category,
+    brand: data.brand,
+    attributes: {},
+  });
+}
+
   // 🔥 Process variants
-  let processedVariants = [];
+  let processedVariants: any[] = [];
 
   if (data.variants?.length) {
     const seen = new Set();
 
     for (const variant of data.variants) {
-      // Normalize attributes
       const normalizedAttrs = Object.fromEntries(
         Object.entries(variant.attributes || {}).map(([k, v]) => [
-          k.trim(),
-          v.trim(),
+          k.trim().toLowerCase(),
+          v.trim().toLowerCase(),
         ])
       );
 
       const key = normalizeAttributes(normalizedAttrs);
 
-      // ❌ Duplicate variant
       if (seen.has(key)) {
         throw new AppError("Duplicate variant combination", 400);
       }
       seen.add(key);
 
-      // ✅ Generate SKU (simple + safe)
       const sku = await generateSmartSKU({
         category: data.category,
         brand: data.brand,
@@ -94,10 +94,8 @@ export const createProduct = async (data: CreateProductDTO) => {
     }
 
     // 🔥 Auto stock
-    data.stock = processedVariants.reduce(
-      (sum, v) => sum + (v.stock || 0),
-      0
-    );
+    data.stock =
+      processedVariants.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
   }
 
   return await Product.create({
@@ -107,12 +105,17 @@ export const createProduct = async (data: CreateProductDTO) => {
   });
 };
 
+
+
+
+
 export const getFeaturedProducts = async () => {
   return await Product.find({
-    isFeatured: true,
+    sections: "featured",
     isPublished: true,
   }).sort({ createdAt: -1 });
-}
+};
+
 
 export const searchProducts = async (query: string) => {
   return await Product.find({
@@ -122,9 +125,9 @@ export const searchProducts = async (query: string) => {
         $or: [
           { name: { $regex: query, $options: "i" } },
           { description: { $regex: query, $options: "i" } },
-          { category: { $regex: query, $options: "i" } },
-        ],
-      },
+          { brand: { $regex: query, $options: "i" } },
+        ]
+      }
     ],
   }).sort({ createdAt: -1 });
 };
@@ -193,10 +196,11 @@ export const updateProduct = async (
       seen.add(key);
 
       // 🔍 Check if exists
-      const match = existing.variants.find(
-        (v) =>
-          normalizeAttributes(v.attributes) === key
-      );
+      const match = (existing.variants || []).find((v) => {
+        if (!v || !v.attributes) return false;
+
+        return normalizeAttributes(v.attributes) === key;
+      });
 
       if (match) {
         // ✅ keep old SKU
@@ -209,8 +213,8 @@ export const updateProduct = async (
         // 🆕 generate new SKU
         const sku = await generateSmartSKU({
           category: data.category
-  ? data.category
-  : toStringId(existing.category),
+            ? data.category
+            : toStringId(existing.category),
           brand: data.brand || existing.brand,
           attributes: normalizedAttrs,
         });

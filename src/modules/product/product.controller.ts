@@ -4,6 +4,8 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { sendResponse } from "../../utils/response";
 import { Product } from "./product.model";
+import { createProductSchema } from "./product.schema";
+import { log } from "node:console";
 
 // ======================================================
 // ✅ HELPERS (FIXED)
@@ -27,21 +29,58 @@ const getParam = (param: string | string[]): string => {
 
 export const createProductHandler = asyncHandler(
   async (req: Request, res: Response) => {
-    const product = await productService.createProduct(req.body);
+    const raw = req.body;
+
+    const parsedBody = {
+      ...raw,
+
+      attributes:
+        typeof raw.attributes === "string"
+          ? JSON.parse(raw.attributes)
+          : raw.attributes,
+
+      variants:
+        typeof raw.variants === "string"
+          ? JSON.parse(raw.variants)
+          : raw.variants,
+
+      images:
+        typeof raw.images === "string"
+          ? JSON.parse(raw.images)
+          : raw.images  || [],
+
+      sections: Array.isArray(raw.sections)
+        ? raw.sections
+        : raw.sections
+          ? [raw.sections]
+          : [],
+    };
+
+    console.log("Parsed Body:", parsedBody);
+    console.log("images of parsed body", parsedBody.images);
+    
+
+    // ✅ 🔥 THIS IS THE MISSING LINE
+    const validatedData = createProductSchema.parse(parsedBody);
+
+    // ✅ use validated data
+    const product = await productService.createProduct(validatedData);
+
     sendResponse(res, 201, "Product created successfully", product);
   }
 );
-
 // ======================================================
 // ✅ GET ALL PRODUCTS
 // ======================================================
 
 export const getProductsHandler = asyncHandler(
+
   async (req: Request, res: Response) => {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
     const filters: any = {};
+
 
     const category = asString(req.query.category);
     if (category) filters.category = category;
@@ -56,6 +95,12 @@ export const getProductsHandler = asyncHandler(
     }
 
     const sort = asString(req.query.sort);
+
+    console.log("RAW BODY:", req.body);
+
+    if (req.body) {
+      console.log("ATTR TYPE:", typeof req.body.attributes);
+    }
 
     const result = await productService.getAllProducts(
       page,

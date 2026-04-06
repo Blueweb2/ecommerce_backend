@@ -7,10 +7,12 @@ const productVariantSchema = z
         message: "Variant must have at least one attribute",
       }),
 
-    price: z.number().positive().optional(),
     discountPrice: z.number().positive().optional(),
+    price: z.coerce.number().positive().optional(),
+    stock: z.coerce.number().int().min(0),
 
-    stock: z.number().int().min(0),
+
+
 
     sku: z.string().regex(/^[A-Z0-9\-]+$/).optional(),
 
@@ -46,8 +48,10 @@ export const createProductSchema = z
     name: z.string().min(3).max(200),
     description: z.string().min(10).max(5000),
 
-    price: z.number().positive(),
+    // price: z.number().positive(),
     discountPrice: z.number().positive().optional(),
+
+    price: z.coerce.number().positive(),
 
     category: z.string().min(1),
 
@@ -59,8 +63,8 @@ export const createProductSchema = z
 
     sku: z.string().regex(/^[A-Z0-9\-]+$/).optional(),
 
-    stock: z.number().int().min(0),
-
+    // stock: z.number().int().min(0),
+    stock: z.coerce.number().int().min(0),
     images: z
       .array(
         z.object({
@@ -83,7 +87,9 @@ export const createProductSchema = z
 
     variants: z.array(productVariantSchema).optional(),
 
-    isPublished: z.boolean().optional().default(true),
+    // isPublished: z.boolean().optional().default(true),
+    isPublished: z.coerce.boolean().optional().default(true),
+
   })
   .superRefine((data, ctx) => {
     // ✅ Product discount validation
@@ -117,6 +123,7 @@ export const createProductSchema = z
       }
     }
   });
+
 export const updateProductSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(200).optional(),
   description: z.string().min(10, "Description must be at least 10 characters").max(5000).optional(),

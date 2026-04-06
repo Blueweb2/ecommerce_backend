@@ -3,8 +3,8 @@ import * as userService from "./user.service";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { sendResponse } from "../../utils/response";
-import { signAccessToken as generateToken } from "../../config/jwt";
-
+import { signAccessToken, signRefreshToken } from "../../config/jwt";
+import bcrypt from "bcryptjs";
 /* =========================
    REGISTER
 ========================= */
@@ -12,11 +12,36 @@ export const registerHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const user = await userService.registerUser(req.body);
 
-    const token = generateToken({
+    // const token = generateToken({
+    //   id: user._id,
+    //   email: user.email,
+    //   role: user.role,
+    // });
+    const accessToken = signAccessToken({
       id: user._id,
-      email: user.email,
       role: user.role,
     });
+
+    const refreshToken = signRefreshToken({
+      id: user._id,
+      role: user.role,
+    });
+
+    // ✅ set cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // ✅ save in DB
+    user.refreshToken = await bcrypt.hash(refreshToken, 10);
+    console.log("Incoming refreshToken user:", refreshToken);
+        console.log("Incoming refreshToken user .user:", refreshToken);
+
+
+    await user.save({ validateBeforeSave: false });
 
     sendResponse(res, 201, "User registered successfully", {
       user: {
@@ -27,7 +52,7 @@ export const registerHandler = asyncHandler(
         role: user.role,
         isActive: user.isActive,
       },
-      token,
+      accessToken,
     });
   }
 );
@@ -39,11 +64,36 @@ export const loginHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const user = await userService.loginUser(req.body);
 
-    const token = generateToken({
+    if (!user.isActive) {
+  throw new AppError("Account is deactivated", 403);
+}
+
+    // const token = generateToken({
+    //   id: user._id,
+    //   email: user.email,
+    //   role: user.role,
+    // });
+    const accessToken = signAccessToken({
       id: user._id,
-      email: user.email,
       role: user.role,
     });
+
+    const refreshToken = signRefreshToken({
+      id: user._id,
+      role: user.role,
+    });
+
+    // ✅ set cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // ✅ save in DB
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
 
     sendResponse(res, 200, "Login successful", {
       user: {
@@ -54,7 +104,7 @@ export const loginHandler = asyncHandler(
         role: user.role,
         isActive: user.isActive,
       },
-      token,
+      accessToken,
     });
   }
 );
@@ -138,8 +188,8 @@ export const createSuperAdminHandler = asyncHandler(
     const { masterKey, ...userData } = req.body;
 
     // 🔍 Debug (optional, remove later)
-    console.log("ENV:", process.env.MASTER_KEY);
-    console.log("BODY:", masterKey);
+    // console.log("ENV:", process.env.MASTER_KEY);
+    // console.log("BODY:", masterKey);
 
     const keyFromEnv = process.env.MASTER_KEY?.trim();
     const keyFromBody = masterKey?.trim();

@@ -31,23 +31,23 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
 
   const { email, password } = req.body;
 
-const user = await User.findOne({ email }).select("+password");
+  const user = await User.findOne({ email }).select("+password");
 
-if (!user || !user.password) {
-  return res.status(400).json({
-    success: false,
-    message: "Invalid credentials",
-  });
-}
+  if (!user || !user.password) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid credentials",
+    });
+  }
 
-const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await bcrypt.compare(password, user.password);
 
-if (!isMatch) {
-  return res.status(400).json({
-    success: false,
-    message: "Invalid credentials",
-  });
-}
+  if (!isMatch) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid credentials",
+    });
+  }
   const payload = { id: user._id, role: user.role };
 
   const accessToken = signAccessToken(payload);
@@ -56,7 +56,7 @@ if (!isMatch) {
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -82,22 +82,71 @@ export const refreshTokenHandler = asyncHandler(
       throw new AppError("No refresh token", 401);
     }
 
+
+
     const decoded = verifyRefreshToken(token) as any;
+
+    const user = await User.findById(decoded.id);
+
+ if (!user) {
+  throw new AppError("User not found", 401);
+}
+
+    // rotate token
+    const newRefreshToken = signRefreshToken({
+      id: decoded.id,
+      role: decoded.role,
+    });
+
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: false, // dev
+      sameSite: "lax",
+    });
 
     const accessToken = signAccessToken({
       id: decoded.id,
       role: decoded.role,
     });
 
-    res.json({ accessToken });
+    res.json({
+      success: true,
+      data: {
+        accessToken,
+      },
+    });
   }
 );
 
 // ✅ LOGOUT
-export const logoutHandler = asyncHandler(async (req: Request, res: Response) => {
-  res.clearCookie("refreshToken");
-  res.json({ message: "Logged out successfully" });
-});
+export const logoutHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    // ✅ Remove refresh token from DB
+    if (req.user?.id) {
+      const user = await User.findById(req.user.id);
+
+      if (user) {
+        user.refreshToken = null;
+        await user.save();
+      }
+    }
+
+    // ✅ Clear cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  }
+);
 
 // ✅ GET ALL ADMINS (Superadmin only)
 export const getAdminsHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -117,14 +166,14 @@ export const getAdminByIdHandler = asyncHandler(async (req: Request, res: Respon
 // ✅ CREATE ADMIN
 export const createAdminHandler = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, password, phone } = req.body;
-  
+
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     throw new AppError("Email already in use", 400);
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  
+
   const newAdmin = await User.create({
     name,
     email,
@@ -186,6 +235,6 @@ export const deleteAdminHandler = asyncHandler(async (req: Request, res: Respons
   }
 
   await admin.deleteOne();
-  
+
   res.json({ message: "Admin deleted successfully" });
 });

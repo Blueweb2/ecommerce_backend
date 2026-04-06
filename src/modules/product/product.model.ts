@@ -23,6 +23,8 @@ export interface IProduct extends Document {
   slug: string;
   sku: string;
   description: string;
+deliveryDetails: string;
+keyFeatures: string[];
   price: number;
   discountPrice?: number;
   category: mongoose.Types.ObjectId;
@@ -46,7 +48,7 @@ const variantSchema = new Schema<IProductVariant>(
     attributes: {
       type: Map,
       of: String,
-      required: true,
+      required: false,
     },
 
     price: {
@@ -70,6 +72,7 @@ const variantSchema = new Schema<IProductVariant>(
       type: String,
       trim: true,
       uppercase: true,
+      sparse: true,
     },
 
     images: [
@@ -98,22 +101,34 @@ const productSchema = new Schema<IProduct>(
     },
     slug: {
       type: String,
-      required: true,
       unique: true,
       lowercase: true,
     },
     sku: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
       uppercase: true,
       index: true,
+      sparse: true,
     },
     description: {
       type: String,
       required: true,
       trim: true,
     },
+    deliveryDetails: {
+  type: String,
+  trim: true,
+  default: "",
+},
+
+keyFeatures: [
+  {
+    type: String,
+    trim: true,
+  },
+],
     price: {
       type: Number,
       required: true,
@@ -173,7 +188,8 @@ const productSchema = new Schema<IProduct>(
       {
         name: {
           type: String,
-          required: true,
+          required: false,
+          lowercase: true,
           trim: true,
         },
         values: [
@@ -212,7 +228,7 @@ const productSchema = new Schema<IProduct>(
 
 // Text index for search
 productSchema.index({ name: "text", description: "text", brand: "text" });
-productSchema.index({ "variants.sku": 1 }, { unique: true });
+productSchema.index({ "variants.sku": 1 }, { sparse: true });
 
 // Index for queries
 productSchema.index({ category: 1, sections: 1, isPublished: 1 });

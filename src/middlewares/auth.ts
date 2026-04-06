@@ -23,11 +23,17 @@ export const protect = async (
 ) => {
   let token: string | undefined;
 
+  // ✅ 1. Try Authorization header
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer ")
   ) {
     token = req.headers.authorization.split(" ")[1];
+  }
+
+  // ✅ 2. Optional fallback (future-proof)
+  if (!token && req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
   }
 
   if (!token) {
@@ -55,15 +61,15 @@ export const protect = async (
 
 export const restrictTo =
   (...roles: string[]) =>
-  (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user?.role || !roles.includes(req.user.role)) {
-      return next(
-        new AppError(
-          "You do not have permission to perform this action",
-          403
-        )
-      );
-    }
+    (req: Request, res: Response, next: NextFunction) => {
+      if (!req.user?.role || !roles.includes(req.user.role)) {
+        return next(
+          new AppError(
+            "You do not have permission to perform this action",
+            403
+          )
+        );
+      }
 
-    next();
-  };
+      next();
+    };

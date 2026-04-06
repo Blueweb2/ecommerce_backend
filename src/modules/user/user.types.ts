@@ -32,5 +32,5 @@ export interface LoginDTO {
 
 export interface AuthResponse {
   user: UserResponse;
-  token: string;
+  accessToken: string;
 }
