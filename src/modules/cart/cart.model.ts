@@ -4,6 +4,12 @@ export interface ICartItem {
   product: mongoose.Types.ObjectId;
   quantity: number;
   price: number;
+  selectedSize?: string;
+
+  customData?: {
+    fieldName: string;
+    value: string;
+  }[];
 }
 
 export interface ICart extends Document {
@@ -32,6 +38,19 @@ const cartItemSchema = new Schema<ICartItem>(
       required: true,
       min: 0,
     },
+
+    customData: [
+      {
+        fieldName: {
+          type: String,
+          required: true,
+        },
+        value: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
   },
   { _id: false }
 );

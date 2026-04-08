@@ -1,4 +1,14 @@
 import { z } from "zod";
+
+
+const customFieldSchema = z.object({
+  name: z.string().min(1, "Field name is required"),
+  type: z.enum(["text", "number", "select"]),
+  required: z.boolean().optional(),
+  options: z.array(z.string()).optional(),
+  unit: z.string().optional(),
+});
+
 const productVariantSchema = z
   .object({
     attributes: z
@@ -10,9 +20,6 @@ const productVariantSchema = z
     discountPrice: z.number().positive().optional(),
     price: z.coerce.number().positive().optional(),
     stock: z.coerce.number().int().min(0),
-
-
-
 
     sku: z.string().regex(/^[A-Z0-9\-]+$/).optional(),
 
@@ -43,13 +50,19 @@ const productVariantSchema = z
     }
   });
 
+
+
+
+
 export const createProductSchema = z
   .object({
     name: z.string().min(3).max(200),
     description: z.string().min(10).max(5000),
 
-    // price: z.number().positive(),
     discountPrice: z.number().positive().optional(),
+    deliveryDetails: z.string().optional(),
+
+    keyFeatures: z.array(z.string().min(1)).optional(),
 
     price: z.coerce.number().positive(),
 
@@ -63,8 +76,8 @@ export const createProductSchema = z
 
     sku: z.string().regex(/^[A-Z0-9\-]+$/).optional(),
 
-    // stock: z.number().int().min(0),
     stock: z.coerce.number().int().min(0),
+
     images: z
       .array(
         z.object({
@@ -85,12 +98,19 @@ export const createProductSchema = z
       )
       .optional(),
 
+    customizable: z
+      .object({
+        isCustomizable: z.boolean().default(false),
+        fields: z.array(customFieldSchema).optional(),
+      })
+      .optional(),
+
     variants: z.array(productVariantSchema).optional(),
 
-    // isPublished: z.boolean().optional().default(true),
     isPublished: z.coerce.boolean().optional().default(true),
-
   })
+
+  // ✅ ONE PLACE FOR ALL VALIDATION
   .superRefine((data, ctx) => {
     // ✅ Product discount validation
     if (
@@ -102,6 +122,20 @@ export const createProductSchema = z
         message: "Discount price must be less than price",
         path: ["discountPrice"],
       });
+    }
+
+    // ✅ Customizable validation
+    if (data.customizable?.isCustomizable) {
+      if (
+        !data.customizable.fields ||
+        data.customizable.fields.length === 0
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Custom fields required when product is customizable",
+          path: ["customizable", "fields"],
+        });
+      }
     }
 
     // ✅ Duplicate variant check
@@ -124,6 +158,8 @@ export const createProductSchema = z
     }
   });
 
+
+
 export const updateProductSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(200).optional(),
   description: z.string().min(10, "Description must be at least 10 characters").max(5000).optional(),
@@ -131,6 +167,11 @@ export const updateProductSchema = z.object({
 
   price: z.number().positive("Price must be a positive number").optional(),
   discountPrice: z.number().positive().optional(),
+  deliveryDetails: z.string().optional(),
+
+  keyFeatures: z
+    .array(z.string().min(1))
+    .optional(),
 
   category: z.string().min(1, "Category is required").optional(),
   sections: z.array(

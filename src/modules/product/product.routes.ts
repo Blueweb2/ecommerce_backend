@@ -11,6 +11,7 @@ import {
   getProductVariantsHandler,
   updateProductStockHandler,
   deleteSingleImageHandler,
+  
 } from "./product.controller";
 
 import { upload } from "../../middlewares/upload";
@@ -83,6 +84,7 @@ router.delete(
   restrictTo("admin", "superadmin"),
   deleteSingleImageHandler
 );
+
 
 
 export default router;

@@ -16,6 +16,17 @@ export interface IProductVariant {
   sku?: string;
   images?: IProductImage[];
   isActive: boolean;
+
+  customizable?: {
+    isCustomizable: boolean;
+    fields: {
+      name: string;
+      type: "text" | "number" | "select";
+      required?: boolean;
+      options?: string[];
+      unit?: string;
+    }[];
+  };
 }
 
 export interface IProduct extends Document {
@@ -23,8 +34,8 @@ export interface IProduct extends Document {
   slug: string;
   sku: string;
   description: string;
-deliveryDetails: string;
-keyFeatures: string[];
+  deliveryDetails: string;
+  keyFeatures: string[];
   price: number;
   discountPrice?: number;
   category: mongoose.Types.ObjectId;
@@ -37,6 +48,17 @@ keyFeatures: string[];
     values: string[];
   }[];
   variants: IProductVariant[];
+
+customizable: {
+  isCustomizable: boolean;
+  fields: {
+    name: string;
+    type: "text" | "number" | "select";
+    required?: boolean;
+    options?: string[];
+    unit?: string;
+  }[];
+};
   isPublished: boolean;
   ratingsAverage: number;
   ratingsCount: number;
@@ -74,6 +96,19 @@ const variantSchema = new Schema<IProductVariant>(
       uppercase: true,
       sparse: true,
     },
+    customizable: {
+  isCustomizable: { type: Boolean, default: false },
+
+  fields: [
+    {
+      name: String,          // e.g., Chest
+      type: String,          // text | number | select
+      required: Boolean,
+      options: [String],     // for select (optional)
+      unit: String           // cm, inch (optional)
+    }
+  ]
+},
 
     images: [
       {
@@ -118,17 +153,44 @@ const productSchema = new Schema<IProduct>(
       trim: true,
     },
     deliveryDetails: {
-  type: String,
-  trim: true,
-  default: "",
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    customizable: {
+  isCustomizable: {
+    type: Boolean,
+    default: false,
+  },
+
+  fields: [
+    {
+      name: {
+        type: String,
+        required: true,
+      },
+      type: {
+        type: String,
+        enum: ["text", "number", "select"],
+        required: true,
+      },
+      required: {
+        type: Boolean,
+        default: false,
+      },
+      options: [String],
+      unit: String,
+    },
+  ],
 },
 
-keyFeatures: [
-  {
-    type: String,
-    trim: true,
-  },
-],
+    keyFeatures: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     price: {
       type: Number,
       required: true,
@@ -160,6 +222,7 @@ keyFeatures: [
       default: 0,
       min: 0,
     },
+
     images: [
       {
         url: {

@@ -23,12 +23,90 @@ const normalizeAttributes = (attrs?: Record<string, string>) => {
 // 🔹 Generate slug
 
 // ======================================================
-// ✅ CREATE PRODUCT
+//  CREATE PRODUCT
 // ======================================================
 
 
+// export const createProduct = async (data: CreateProductDTO) => {
+//   // 🔥 SLUG (correct)
+//   const baseSlug = slugify(data.name, { lower: true, strict: true });
+
+//   let slug = baseSlug;
+//   let counter = 1;
+
+//   while (await Product.findOne({ slug })) {
+//     slug = `${baseSlug}-${counter++}`;
+//   }
+
+//   // 🔥 Validate attribute keys
+//   if (data.attributes && data.variants) {
+//     const validAttributes = new Set(data.attributes.map((a) => a.name));
+
+//     for (const variant of data.variants) {
+//       for (const key of Object.keys(variant.attributes || {})) {
+//         if (!validAttributes.has(key)) {
+//           throw new AppError(`Invalid attribute: ${key}`, 400);
+//         }
+//       }
+//     }
+//   }
+
+//   if (!data.variants?.length) {
+//   data.sku = await generateSmartSKU({
+//     category: data.category,
+//     brand: data.brand,
+//     attributes: {},
+//   });
+// }
+
+//   // 🔥 Process variants
+//   let processedVariants: any[] = [];
+
+//   if (data.variants?.length) {
+//     const seen = new Set();
+
+//     for (const variant of data.variants) {
+//       const normalizedAttrs = Object.fromEntries(
+//         Object.entries(variant.attributes || {}).map(([k, v]) => [
+//           k.trim().toLowerCase(),
+//           v.trim().toLowerCase(),
+//         ])
+//       );
+
+//       const key = normalizeAttributes(normalizedAttrs);
+
+//       if (seen.has(key)) {
+//         throw new AppError("Duplicate variant combination", 400);
+//       }
+//       seen.add(key);
+
+//       const sku = await generateSmartSKU({
+//         category: data.category,
+//         brand: data.brand,
+//         attributes: normalizedAttrs,
+//       });
+
+//       processedVariants.push({
+//         ...variant,
+//         attributes: normalizedAttrs,
+//         sku,
+//       });
+//     }
+
+//     // 🔥 Auto stock
+//     data.stock =
+//       processedVariants.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+//   }
+
+//   return await Product.create({
+//     ...data,
+//     slug,
+//     variants: processedVariants,
+//   });
+// };
+
 export const createProduct = async (data: CreateProductDTO) => {
-  // 🔥 SLUG (correct)
+  //  SLUG
   const baseSlug = slugify(data.name, { lower: true, strict: true });
 
   let slug = baseSlug;
@@ -38,7 +116,7 @@ export const createProduct = async (data: CreateProductDTO) => {
     slug = `${baseSlug}-${counter++}`;
   }
 
-  // 🔥 Validate attribute keys
+  //  Validate attributes
   if (data.attributes && data.variants) {
     const validAttributes = new Set(data.attributes.map((a) => a.name));
 
@@ -51,15 +129,9 @@ export const createProduct = async (data: CreateProductDTO) => {
     }
   }
 
-  if (!data.variants?.length) {
-  data.sku = await generateSmartSKU({
-    category: data.category,
-    brand: data.brand,
-    attributes: {},
-  });
-}
-
-  // 🔥 Process variants
+  // ===============================
+  //  PROCESS VARIANTS FIRST
+  // ===============================
   let processedVariants: any[] = [];
 
   if (data.variants?.length) {
@@ -93,19 +165,69 @@ export const createProduct = async (data: CreateProductDTO) => {
       });
     }
 
-    // 🔥 Auto stock
+    //  auto stock
     data.stock =
       processedVariants.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+
+    // ❗ VERY IMPORTANT
+    delete data.sku;
+  } else {
+    //  product-level SKU
+    data.sku = await generateSmartSKU({
+      category: data.category,
+      brand: data.brand,
+      attributes: {},
+    });
   }
 
+  // FINAL SAFETY (avoid null SKU crash)
+  if (!data.sku) {
+    delete data.sku;
+  }
+
+  // ===============================
+// ✅ VALIDATE CUSTOMIZATION
+// ===============================
+if (data.customizable?.isCustomizable) {
+  if (!data.customizable.fields || data.customizable.fields.length === 0) {
+    throw new AppError("Custom fields required", 400);
+  }
+
+  const seenFields = new Set();
+
+  for (const field of data.customizable.fields) {
+    const name = field.name.trim().toLowerCase();
+
+    if (seenFields.has(name)) {
+      throw new AppError(`Duplicate custom field: ${name}`, 400);
+    }
+
+    seenFields.add(name);
+
+    // ✅ normalize
+    field.name = name;
+
+    // ✅ validate select type
+    if (field.type === "select") {
+      if (!field.options || field.options.length === 0) {
+        throw new AppError(
+          `Options required for select field: ${field.name}`,
+          400
+        );
+      }
+    }
+  }
+}
+
+  // ===============================
+  // SAVE PRODUCT
+  // ===============================
   return await Product.create({
     ...data,
     slug,
     variants: processedVariants,
   });
 };
-
-
 
 
 
@@ -152,7 +274,7 @@ export const deleteSingleImage = async (
 };
 
 // ======================================================
-// ✅ UPDATE PRODUCT
+//  UPDATE PRODUCT
 // ======================================================
 
 export const updateProduct = async (
@@ -165,7 +287,7 @@ export const updateProduct = async (
     throw new AppError("Product not found", 404);
   }
 
-  // 🔥 Handle image replacement
+  //  Handle image replacement
   if (data.images && existing.images) {
     for (const img of existing.images) {
       if (img.public_id) {
@@ -174,7 +296,7 @@ export const updateProduct = async (
     }
   }
 
-  // 🔥 Handle variants
+  //  Handle variants
   if (data.variants?.length) {
     const updatedVariants = [];
     const seen = new Set();
@@ -189,7 +311,7 @@ export const updateProduct = async (
 
       const key = normalizeAttributes(normalizedAttrs);
 
-      // ❌ duplicate
+      //  duplicate
       if (seen.has(key)) {
         throw new AppError("Duplicate variant combination", 400);
       }
@@ -203,14 +325,14 @@ export const updateProduct = async (
       });
 
       if (match) {
-        // ✅ keep old SKU
+        // keep old SKU
         updatedVariants.push({
           ...newVariant,
           attributes: normalizedAttrs,
           sku: match.sku,
         });
       } else {
-        // 🆕 generate new SKU
+        //  generate new SKU
         const sku = await generateSmartSKU({
           category: data.category
             ? data.category
@@ -229,7 +351,7 @@ export const updateProduct = async (
 
     data.variants = updatedVariants;
 
-    // 🔥 recalc stock
+    //  recalc stock
     data.stock = updatedVariants.reduce(
       (sum, v) => sum + (v.stock || 0),
       0
@@ -245,7 +367,7 @@ export const updateProduct = async (
 
 
 // ======================================================
-// ✅ GET METHODS
+//  GET METHODS
 // ======================================================
 
 export const getAllProducts = async (

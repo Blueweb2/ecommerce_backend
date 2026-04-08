@@ -17,6 +17,41 @@ export const getCartHandler = asyncHandler(
   }
 );
 
+
+// addToCart: async (req, res) => {
+//   const { productId, quantity, selectedSize, customData } = req.body;
+
+//   const product = await Product.findById(productId);
+
+//   if (!product) {
+//     return res.status(404).json({ message: "Product not found" });
+//   }
+
+//   // ✅ Validate custom fields
+//   if (product.customizable?.isCustomizable) {
+//     for (const field of product.customizable.fields) {
+//       if (field.required) {
+//         const exists = customData?.find(f => f.fieldName === field.name);
+
+//         if (!exists) {
+//           return res.status(400).json({
+//             message: `${field.name} is required`
+//           });
+//         }
+//       }
+//     }
+//   }
+
+//   // Save in cart
+//   const cartItem = {
+//     productId,
+//     quantity,
+//     selectedSize,
+//     customData
+//   };
+
+//   // push into user's cart
+// }
 export const addToCartHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = req.user?.id;

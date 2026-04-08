@@ -13,6 +13,14 @@ export interface ICategory extends Document {
   image?: ICategoryImage;
   parent?: mongoose.Types.ObjectId | null;
   level: number;
+  isCustomizable: boolean;
+  customFields?: {
+    name: string;
+    type: "text" | "number" | "select";
+    required?: boolean;
+    options?: string[];
+    unit?: string;
+  }[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -35,6 +43,24 @@ const categorySchema = new Schema<ICategory>(
       type: String,
       trim: true,
     },
+    isCustomizable: {
+      type: Boolean,
+      default: false,
+    },
+
+    customFields: [
+      {
+        name: { type: String, required: true },
+        type: {
+          type: String,
+          enum: ["text", "number", "select"],
+          required: true,
+        },
+        required: { type: Boolean, default: false },
+        options: [String],
+        unit: String,
+      },
+    ],
     image: {
       url: {
         type: String,

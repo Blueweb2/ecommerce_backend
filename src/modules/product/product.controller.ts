@@ -47,7 +47,12 @@ export const createProductHandler = asyncHandler(
       images:
         typeof raw.images === "string"
           ? JSON.parse(raw.images)
-          : raw.images  || [],
+          : raw.images || [],
+
+      customizable:
+        typeof raw.customizable === "string"
+          ? JSON.parse(raw.customizable)
+          : raw.customizable,
 
       sections: Array.isArray(raw.sections)
         ? raw.sections
@@ -58,7 +63,7 @@ export const createProductHandler = asyncHandler(
 
     console.log("Parsed Body:", parsedBody);
     console.log("images of parsed body", parsedBody.images);
-    
+
 
     // ✅ 🔥 THIS IS THE MISSING LINE
     const validatedData = createProductSchema.parse(parsedBody);

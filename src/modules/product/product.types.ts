@@ -10,6 +10,14 @@ export interface ProductAttributeDTO {
   values: string[];
 }
 
+export interface CustomFieldDTO {
+  name: string;
+  type: "text" | "number" | "select";
+  required?: boolean;
+  options?: string[];
+  unit?: string;
+}
+
 export interface ProductVariantDTO {
   attributes: Record<string, string>;
 
@@ -43,11 +51,15 @@ export interface CreateProductDTO {
   attributes?: ProductAttributeDTO[];
 
   variants?: ProductVariantDTO[];
+  customizable?: {
+    isCustomizable: boolean;
+    fields?: CustomFieldDTO[];
+  };
 
   isPublished?: boolean;
 }
 
-export interface UpdateProductDTO extends Partial<CreateProductDTO> {}
+export interface UpdateProductDTO extends Partial<CreateProductDTO> { }
 
 export interface ProductResponse {
   _id: string;
