@@ -1,28 +1,47 @@
 import { z } from "zod";
 
-
-const customDataSchema = z.object({
+/**
+ * 🔹 Selected Option Schema (Shared)
+ */
+export const selectedOptionSchema = z.object({
   fieldName: z.string().min(1, "Field name is required"),
   value: z.string().min(1, "Value is required"),
 });
 
+/**
+ * 🔹 Add To Cart Schema
+ */
 export const addToCartSchema = z.object({
-  productId: z.string(),
+  productId: z.string().min(1, "Product ID is required"),
 
-  quantity: z.number().int().min(1, "Quantity must be at least 1"),
+  variantId: z.string().optional(),
 
-  price: z.number().positive("Price must be positive"),
+  quantity: z
+    .number()
+    .int()
+    .min(1, "Quantity must be at least 1"),
 
-  // ✅ NEW
-  selectedSize: z.string().optional(),
+  price: z
+    .number()
+    .positive("Price must be positive"),
 
-  // ✅ NEW
-  customData: z.array(customDataSchema).optional(),
+  selectedOptions: z
+    .array(selectedOptionSchema)
+    .optional()
+    .default([]),
 });
 
+/**
+ * 🔹 Update Cart Item Schema
+ */
 export const updateCartItemSchema = z.object({
-  quantity: z.number().int().min(1, "Quantity must be at least 1"),
-   selectedSize: z.string().optional(),
+  quantity: z
+    .number()
+    .int()
+    .min(1, "Quantity must be at least 1")
+    .optional(),
 
-  customData: z.array(customDataSchema).optional(),
+  selectedOptions: z
+    .array(selectedOptionSchema)
+    .optional(),
 });

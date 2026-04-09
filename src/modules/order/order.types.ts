@@ -30,13 +30,18 @@ export interface OrderResponse {
   updatedAt: string;
 }
 
+export interface SelectedOption {
+  fieldName: string;
+  value: string;
+}
+
 export interface OrderItemResponse {
   product: string;
+
   quantity: number;
   price: number;
-  selectedSize?: string;
-  customData?: {
-    fieldName: string;
-    value: string;
-  }[];
+
+  variantId?: string; // ✅ NEW
+
+  selectedOptions?: SelectedOption[]; // ✅ NEW
 }

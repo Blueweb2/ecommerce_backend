@@ -29,8 +29,8 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       product: item.product,
       quantity: item.quantity,
       price: item.price,
-      selectedSize: item.selectedSize,
-      customData: item.customData,
+      variantId: item.variantId,
+selectedOptions: item.selectedOptions,
     }));
 
     // ✅ Create order

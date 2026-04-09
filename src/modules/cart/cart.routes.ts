@@ -14,23 +14,41 @@ import { addToCartSchema, updateCartItemSchema } from "./cart.schema";
 
 const router = Router();
 
-router.use(protect); // All cart routes require authentication
+// 🔒 All routes protected
+router.use(protect);
 
-// Get cart
+/**
+ * 🛒 GET CART
+ */
 router.get("/", getCartHandler);
 
-// Add to cart
+/**
+ * ➕ ADD ITEM
+ */
 router.post("/", validate(addToCartSchema), addToCartHandler);
 
-// Update cart item quantity (must come BEFORE clear route)
-router.put("/:productId", validate(updateCartItemSchema), updateCartItemHandler);
+/**
+ * 🔄 MERGE CART (on login)
+ */
+router.post("/merge", mergeCartHandler);
 
-// Remove specific item from cart
-router.delete("/:productId", removeFromCartHandler);
+/**
+ * ✏️ UPDATE ITEM (by itemId)
+ */
+router.patch(
+  "/item/:itemId",
+  validate(updateCartItemSchema),
+  updateCartItemHandler
+);
 
-// Clear entire cart (must come AFTER /:productId routes)
+/**
+ * ❌ REMOVE ITEM (by itemId)
+ */
+router.delete("/item/:itemId", removeFromCartHandler);
+
+/**
+ * 🧹 CLEAR CART
+ */
 router.delete("/", clearCartHandler);
-
-router.post("/merge", protect, mergeCartHandler);
 
 export default router;

@@ -4,11 +4,12 @@ export interface IOrderItem {
   product: mongoose.Types.ObjectId;
   quantity: number;
   price: number;
-  selectedSize?: string;
-  customData?: {
-    fieldName: string;
-    value: string;
-  }[];
+ variantId?: string;
+
+selectedOptions?: {
+  fieldName: string;
+  value: string;
+}[];
 }
 
 export interface IOrder extends Document {
@@ -31,6 +32,13 @@ export interface IOrder extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+const selectedOptionSchema = new Schema(
+  {
+    fieldName: { type: String, required: true },
+    value: { type: String, required: true },
+  },
+  { _id: false }
+);
 
 const orderItemSchema = new Schema<IOrderItem>(
   {
@@ -39,34 +47,27 @@ const orderItemSchema = new Schema<IOrderItem>(
       ref: "Product",
       required: true,
     },
+
     quantity: {
       type: Number,
       required: true,
       min: 1,
     },
+
     price: {
       type: Number,
       required: true,
       min: 0,
     },
 
-     selectedSize: {
-      type: String,
+    variantId: {
+      type: String, // ✅ NEW
     },
 
-    // ✅ ADD THIS
-    customData: [
-      {
-        fieldName: {
-          type: String,
-          required: true,
-        },
-        value: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
+    selectedOptions: {
+      type: [selectedOptionSchema],
+      default: [], // ✅ IMPORTANT
+    },
   },
   { _id: false }
 );
