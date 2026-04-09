@@ -6,11 +6,41 @@ import { sendResponse } from "../../utils/response";
 
 export const createOrderHandler = asyncHandler(
   async (req: Request, res: Response) => {
-    const order = await orderService.createOrder((req as any).user.id, req.body);
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const order = await orderService.createOrder(userId, req.body);
     sendResponse(res, 201, "Order created successfully", order);
   }
 );
 
+export const cancelOrderHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const orderId = req.params.id as string;
+    const userId = (req as any).user.id;
+
+    const order = await orderService.cancelOrder(orderId, userId);
+
+    sendResponse(res, 200, "Order cancelled successfully", order);
+  }
+);
+
+export const markOrderPaidHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const orderId = req.params.id as string;
+
+    const order = await orderService.markOrderPaid(orderId);
+
+    if (!order) {
+      throw new AppError("Order not found", 404);
+    }
+
+    sendResponse(res, 200, "Order marked as paid", order);
+  }
+);
 export const getOrderHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const orderId = req.params.id as string;

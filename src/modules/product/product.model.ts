@@ -94,21 +94,7 @@ const variantSchema = new Schema<IProductVariant>(
       type: String,
       trim: true,
       uppercase: true,
-      sparse: true,
     },
-    customizable: {
-  isCustomizable: { type: Boolean, default: false },
-
-  fields: [
-    {
-      name: String,          // e.g., Chest
-      type: String,          // text | number | select
-      required: Boolean,
-      options: [String],     // for select (optional)
-      unit: String           // cm, inch (optional)
-    }
-  ]
-},
 
     images: [
       {

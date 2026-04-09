@@ -388,7 +388,9 @@ export const getAllProducts = async (
 
   let sortOption: any = { createdAt: -1 };
   if (sort === "price-asc") sortOption = { price: 1 };
-  if (sort === "price-desc") sortOption = { price: -1 };
+  else if (sort === "price-desc") sortOption = { price: -1 };
+  else if (sort === "top-rated") sortOption = { ratingsAverage: -1, ratingsCount: -1 };
+  else if (sort === "best-sellers") sortOption = { ratingsCount: -1 }; // Dummy logic since explicit sales count field may be missing
 
   const [products, total] = await Promise.all([
     Product.find(query)

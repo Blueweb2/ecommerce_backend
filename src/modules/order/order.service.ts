@@ -5,41 +5,112 @@ import { CreateOrderDTO } from "./order.types";
 import { AppError } from "../../utils/AppError";
 
 export const createOrder = async (userId: string, data: CreateOrderDTO) => {
-  // Get user's cart
-  const cart = await Cart.findOne({ user: userId });
+  const session = await Order.startSession();
+  session.startTransaction();
 
-  if (!cart || cart.items.length === 0) {
-    throw new AppError("Cart is empty", 400);
-  }
+  try {
+    const cart = await Cart.findOne({ user: userId }).session(session);
 
-  // Create order
-  const order = await Order.create({
-    user: userId,
-    items: cart.items,
-    totalPrice: cart.totalPrice,
-    totalQuantity: cart.totalQuantity,
-    shippingAddress: data.shippingAddress,
-    paymentMethod: data.paymentMethod,
-    notes: data.notes,
-  });
+    if (!cart || cart.items.length === 0) {
+      throw new AppError("Cart is empty", 400);
+    }
 
-  // Reduce product stock
-  for (const item of cart.items) {
-    await Product.findByIdAndUpdate(
-      item.product,
-      {
-        $inc: { stock: -item.quantity },
+    // ✅ Check stock
+    for (const item of cart.items) {
+      const product = await Product.findById(item.product).session(session);
+
+      if (!product || product.stock < item.quantity) {
+        throw new AppError("Insufficient stock for some items", 400);
       }
+    }
+
+    // ✅ Map items (with customization)
+    const orderItems = cart.items.map((item) => ({
+      product: item.product,
+      quantity: item.quantity,
+      price: item.price,
+      selectedSize: item.selectedSize,
+      customData: item.customData,
+    }));
+
+    // ✅ Create order
+    const order = await Order.create(
+      [
+        {
+          user: userId,
+          items: orderItems,
+          totalPrice: cart.totalPrice,
+          totalQuantity: cart.totalQuantity,
+          shippingAddress: data.shippingAddress,
+          paymentMethod: data.paymentMethod,
+          notes: data.notes,
+        },
+      ],
+      { session }
     );
+
+    // ✅ Reduce stock
+    for (const item of cart.items) {
+      await Product.findByIdAndUpdate(
+        item.product,
+        { $inc: { stock: -item.quantity } },
+        { session }
+      );
+    }
+
+    // ✅ Clear cart
+    await Cart.updateOne(
+      { user: userId },
+      { items: [], totalPrice: 0, totalQuantity: 0 },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return order[0];
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
+export const markOrderPaid = async (orderId: string) => {
+  return await Order.findByIdAndUpdate(
+    orderId,
+    {
+      isPaid: true,
+      paidAt: new Date(),
+    },
+    { new: true }
+  );
+};
+
+export const cancelOrder = async (orderId: string, userId: string) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) throw new AppError("Order not found", 404);
+
+  // ✅ Only owner can cancel
+  if (order.user.toString() !== userId) {
+    throw new AppError("Unauthorized", 403);
   }
 
-  // Clear cart
-  await Cart.updateOne(
-    { user: userId },
-    { items: [], totalPrice: 0, totalQuantity: 0 }
-  );
+  // ✅ Prevent cancelling delivered orders
+  if (order.status === "delivered") {
+    throw new AppError("Cannot cancel delivered order", 400);
+  }
 
-  return order;
+  // ✅ Restore stock
+  for (const item of order.items) {
+    await Product.findByIdAndUpdate(item.product, {
+      $inc: { stock: item.quantity },
+    });
+  }
+
+  order.status = "cancelled";
+  return await order.save();
 };
 
 export const getOrderById = async (id: string) => {

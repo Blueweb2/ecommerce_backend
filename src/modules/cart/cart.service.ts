@@ -19,19 +19,61 @@ export const getCart = async (userId: string) => {
 export const addToCart = async (
   userId: string,
   productId: string,
-  quantity: number
+  quantity: number,
+  selectedSize?: string,
+  customData?: { fieldName: string; value: string }[]
 ) => {
   let cart = await Cart.findOne({ user: userId });
 
   const product = await Product.findById(productId);
   if (!product) throw new AppError("Product not found", 404);
 
+  // ✅ Create cart if not exists
   if (!cart) {
     cart = await Cart.create({ user: userId, items: [] });
   }
 
-  const existingItem = cart.items.find(
-    (item) => item.product.toString() === productId
+  // ✅ HANDLE CUSTOMIZABLE PRODUCTS ONLY
+  if (product.customizable?.isCustomizable) {
+    for (const field of product.customizable.fields) {
+      if (field.required) {
+        const exists = customData?.find(
+          (f) => f.fieldName === field.name
+        );
+
+        if (!exists) {
+          throw new AppError(`${field.name} is required`, 400);
+        }
+      }
+    }
+  } else {
+    // ✅ NON-CUSTOM PRODUCT → ignore customization
+    selectedSize = undefined;
+    customData = undefined;
+  }
+
+  // ✅ SMART COMPARISON FUNCTION
+  const isSameItem = (
+    item: any,
+    productId: string,
+    selectedSize?: string,
+    customData?: any[]
+  ) => {
+    if (item.product.toString() !== productId) return false;
+
+    // ✅ If no customization → match only by product
+    if (!selectedSize && !customData) return true;
+
+    return (
+      item.selectedSize === selectedSize &&
+      JSON.stringify(item.customData || []) ===
+        JSON.stringify(customData || [])
+    );
+  };
+
+  // ✅ Find existing item
+  const existingItem = cart.items.find((item) =>
+    isSameItem(item, productId, selectedSize, customData)
   );
 
   if (existingItem) {
@@ -51,9 +93,12 @@ export const addToCart = async (
       product: productId as any,
       quantity,
       price: product.price,
+      selectedSize,
+      customData,
     });
   }
 
+  // ✅ Recalculate totals
   const totals = calculateCartTotals(cart.items);
   cart.totalPrice = totals.totalPrice;
   cart.totalQuantity = totals.totalQuantity;

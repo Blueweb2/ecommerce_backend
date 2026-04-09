@@ -13,7 +13,7 @@ const customFieldSchema = z.object({
   unit: z.string().optional(),
 });
 
-export const createCategorySchema = z
+const categoryBaseSchema = z
   .object({
     name: z.string().min(2).max(100),
 
@@ -43,7 +43,7 @@ export const createCategorySchema = z
     isActive: z.boolean().optional().default(true),
   })
 
-  .refine(
+export const createCategorySchema = categoryBaseSchema.refine(
     (data) => {
       if (data.isCustomizable) {
         return data.customFields && data.customFields.length > 0;
@@ -57,4 +57,4 @@ export const createCategorySchema = z
   );
 
 
-export const updateCategorySchema = createCategorySchema.partial();
+export const updateCategorySchema = categoryBaseSchema.partial();

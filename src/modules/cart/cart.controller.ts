@@ -60,9 +60,14 @@ export const addToCartHandler = asyncHandler(
       throw new AppError("Unauthorized", 401);
     }
 
-    const { productId, quantity } = req.body;
-    const cart = await cartService.addToCart(userId, productId, quantity);
-    sendResponse(res, 200, "Item added to cart", cart);
+    const { productId, quantity, selectedSize, customData } = req.body;
+const cart = await cartService.addToCart(
+  userId,
+  productId,
+  quantity,
+  selectedSize,
+  customData
+);    sendResponse(res, 200, "Item added to cart", cart);
   }
 );
 

@@ -34,4 +34,9 @@ export interface OrderItemResponse {
   product: string;
   quantity: number;
   price: number;
+  selectedSize?: string;
+  customData?: {
+    fieldName: string;
+    value: string;
+  }[];
 }

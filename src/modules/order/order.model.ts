@@ -4,6 +4,11 @@ export interface IOrderItem {
   product: mongoose.Types.ObjectId;
   quantity: number;
   price: number;
+  selectedSize?: string;
+  customData?: {
+    fieldName: string;
+    value: string;
+  }[];
 }
 
 export interface IOrder extends Document {
@@ -44,6 +49,24 @@ const orderItemSchema = new Schema<IOrderItem>(
       required: true,
       min: 0,
     },
+
+     selectedSize: {
+      type: String,
+    },
+
+    // ✅ ADD THIS
+    customData: [
+      {
+        fieldName: {
+          type: String,
+          required: true,
+        },
+        value: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
   },
   { _id: false }
 );

@@ -39,6 +39,10 @@ const cartItemSchema = new Schema<ICartItem>(
       min: 0,
     },
 
+     selectedSize: {
+      type: String,
+    },
+
     customData: [
       {
         fieldName: {
