@@ -11,9 +11,9 @@ const normalizeOptions = (options: any[] = []) =>
 const isSameItem = (item: any, incoming: any) => {
   return (
     item.product.toString() === incoming.productId &&
-    item.variantId === incoming.variantId &&
-    JSON.stringify(item.selectedOptions || []) ===
-      JSON.stringify(incoming.selectedOptions || [])
+    (item.variantId ?? undefined) === (incoming.variantId ?? undefined) &&
+    JSON.stringify(normalizeOptions(item.selectedOptions || [])) ===
+      JSON.stringify(normalizeOptions(incoming.selectedOptions || []))
   );
 };
 const calculateCartTotals = (items: any[]) => {
@@ -80,6 +80,10 @@ export const addToCart = async (
     } as any);
   }
 
+  const totals = calculateCartTotals(cart.items);
+  cart.totalPrice = totals.totalPrice;
+  cart.totalQuantity = totals.totalQuantity;
+
   return await cart.save();
 };
 
@@ -129,6 +133,10 @@ export const mergeCart = async (
     }
   }
 
+  const totals = calculateCartTotals(cart.items);
+  cart.totalPrice = totals.totalPrice;
+  cart.totalQuantity = totals.totalQuantity;
+
   return await cart.save();
 };
 
@@ -140,6 +148,10 @@ export const removeFromCart = async (userId: string, itemId: string) => {
   cart.items = cart.items.filter(
     (item) => item._id?.toString() !== itemId
   );
+
+  const totals = calculateCartTotals(cart.items);
+  cart.totalPrice = totals.totalPrice;
+  cart.totalQuantity = totals.totalQuantity;
 
   return await cart.save();
 };
@@ -165,6 +177,10 @@ export const updateCartItem = async (
   }
 
   item.quantity = quantity;
+
+  const totals = calculateCartTotals(cart.items);
+  cart.totalPrice = totals.totalPrice;
+  cart.totalQuantity = totals.totalQuantity;
 
   return await cart.save();
 };;

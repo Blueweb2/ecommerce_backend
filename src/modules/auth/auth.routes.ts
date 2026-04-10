@@ -1,5 +1,6 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import {
+  registerHandler,
   loginHandler,
   refreshTokenHandler,
   logoutHandler,
@@ -15,6 +16,7 @@ import { protect, restrictTo } from "../../middlewares/auth";
 const router = Router();
 
 // Standard Auth Routes
+router.post("/register", registerHandler);
 router.post("/login", loginHandler);
 router.post("/refresh-token", refreshTokenHandler);
 router.post("/logout", logoutHandler);

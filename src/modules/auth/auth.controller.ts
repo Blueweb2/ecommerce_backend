@@ -24,6 +24,54 @@ export const getMeHandler = asyncHandler(async (req: Request, res: Response) => 
   res.json({ user });
 });
 
+// ✅ REGISTER
+export const registerHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { name, email, password, phone } = req.body;
+
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    throw new AppError("Email already in use", 400);
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const newUser = await User.create({
+    name,
+    email,
+    password: hashedPassword,
+    phone,
+    role: "user",
+    isActive: true,
+  });
+
+  const payload = { id: newUser._id, role: newUser.role };
+
+  const accessToken = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
+
+  newUser.refreshToken = refreshToken;
+  await newUser.save();
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  const safeUser = {
+    id: newUser._id,
+    name: newUser.name,
+    email: newUser.email,
+    role: newUser.role,
+  };
+
+  res.status(201).json({
+    accessToken,
+    user: safeUser,
+  });
+});
+
 // ✅ LOGIN
 export const loginHandler = asyncHandler(async (req: Request, res: Response) => {
 
