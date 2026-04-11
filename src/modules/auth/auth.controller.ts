@@ -21,7 +21,14 @@ export const getMeHandler = asyncHandler(async (req: Request, res: Response) => 
     throw new AppError("User not found", 404);
   }
 
-  res.json({ user });
+  const safeUser = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
+
+  res.json({ user: safeUser });
 });
 
 // ✅ REGISTER
@@ -116,6 +123,7 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
   };
 
   res.json({
+    success: true,
     accessToken,
     user: safeUser,
   });

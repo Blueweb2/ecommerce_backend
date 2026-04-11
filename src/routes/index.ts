@@ -7,6 +7,7 @@ import orderRoutes from "../modules/order/order.routes";
 import cloudinaryRoutes from "../modules/cloudinary/cloudinary.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import addressRoutes from "../modules/address/address.routes";
+import wishlistRoutes from "../modules/wishlist/wishlist.routes";
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.use("/categories", categoryRoutes);
 router.use("/cart", cartRoutes);
 router.use("/orders", orderRoutes);
 router.use("/address", addressRoutes);
-
+router.use("/wishlist", wishlistRoutes);
 router.use("/cloudinary", cloudinaryRoutes);
 
 export default router;
