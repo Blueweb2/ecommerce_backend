@@ -6,7 +6,7 @@ export interface CreateOrderDTO {
     postalCode: string;
     country: string;
   };
-  paymentMethod: "card" | "paypal" | "stripe";
+  paymentMethod: "cod" | "razorpay";
   notes?: string;
 }
 

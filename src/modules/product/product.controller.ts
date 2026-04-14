@@ -5,7 +5,7 @@ import { AppError } from "../../utils/AppError";
 import { sendResponse } from "../../utils/response";
 import { Product } from "./product.model";
 import { createProductSchema } from "./product.schema";
-import { log } from "node:console";
+import { Category } from "../category/category.model";
 
 // ======================================================
 // ✅ HELPERS (FIXED)
@@ -84,11 +84,44 @@ export const getProductsHandler = asyncHandler(
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
+  
+
+
+    // const category = asString(req.query.category);
+    // if (category) filters.category = category;
     const filters: any = {};
 
+const categorySlug = asString(req.query.category);
 
-    const category = asString(req.query.category);
-    if (category) filters.category = category;
+if (categorySlug) {
+  console.log("Incoming category:", categorySlug);
+
+  const catDoc = await Category.findOne({ slug: categorySlug });
+
+  console.log("Category found:", catDoc);
+
+  if (!catDoc) {
+    return sendResponse(res, 200, "No products found", {
+      products: [],
+      pagination: { total: 0, page, limit, pages: 0 },
+    });
+  }
+
+  // ✅ Fetch all subcategories recursively (all descendants)
+  let allCategoryIds = [catDoc._id];
+  let parentIds = [catDoc._id];
+  
+  while (parentIds.length > 0) {
+    const children = await Category.find({ parent: { $in: parentIds } });
+    if (children.length === 0) break;
+    const childIds = children.map(c => c._id);
+    allCategoryIds.push(...childIds);
+    parentIds = childIds;
+  }
+
+  // ✅ IMPORTANT: filter products combining the main category and all its subcategories
+  filters.category = { $in: allCategoryIds };
+}
 
     const sections = asString(req.query.sections);
     if (sections) {

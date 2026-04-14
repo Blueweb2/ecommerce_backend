@@ -6,7 +6,7 @@ export interface ISelectedOption {
 }
 
 export interface ICartItem {
-  _id?: mongoose.Types.ObjectId; // ✅ needed
+  _id?: mongoose.Types.ObjectId;
 
   product: mongoose.Types.ObjectId;
   variantId?: string;
@@ -28,16 +28,11 @@ export interface ICart extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
 const selectedOptionSchema = new Schema<ISelectedOption>(
   {
-    fieldName: {
-      type: String,
-      required: true,
-    },
-    value: {
-      type: String,
-      required: true,
-    },
+    fieldName: { type: String, required: true },
+    value: { type: String, required: true },
   },
   { _id: false }
 );
@@ -51,7 +46,7 @@ const cartItemSchema = new Schema<ICartItem>(
     },
 
     variantId: {
-      type: String, // ✅ added (for variants like size/color SKU)
+      type: String,
     },
 
     quantity: {
@@ -66,10 +61,10 @@ const cartItemSchema = new Schema<ICartItem>(
       min: 0,
     },
 
-    selectedOptions: [selectedOptionSchema], // ✅ unified structure
+    selectedOptions: [selectedOptionSchema],
   },
   {
-    _id: true, // ✅ IMPORTANT (allows update/remove by itemId)
+    _id: true,
   }
 );
 
@@ -79,13 +74,13 @@ const cartSchema = new Schema<ICart>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true, // ✅ one cart per user
-      index: true,  // ✅ faster queries
+      unique: true,
+      index: true,
     },
 
     items: {
       type: [cartItemSchema],
-      default: [], // ✅ prevents undefined issues
+      default: [],
     },
 
     totalPrice: {
@@ -102,8 +97,24 @@ const cartSchema = new Schema<ICart>(
   },
   {
     timestamps: true,
-    versionKey: false, // ✅ removes __v (cleaner API)
+    versionKey: false,
   }
 );
+
+
+cartSchema.pre("save", function () {
+  const cart = this as any;
+
+  const totals = cart.items.reduce(
+    (acc: any, item: any) => ({
+      totalPrice: acc.totalPrice + item.price * item.quantity,
+      totalQuantity: acc.totalQuantity + item.quantity,
+    }),
+    { totalPrice: 0, totalQuantity: 0 }
+  );
+
+  cart.totalPrice = totals.totalPrice;
+  cart.totalQuantity = totals.totalQuantity;
+});
 
 export const Cart = mongoose.model<ICart>("Cart", cartSchema);

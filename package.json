@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
- "scripts": {
-  "build": "tsc",
-  "start": "node dist/server.js",
-  "dev": "nodemon src/server.ts"
-},
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "nodemon src/server.ts"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -26,6 +26,7 @@
     "mongoose": "^9.3.1",
     "multer": "^2.1.1",
     "qrcode": "^1.5.4",
+    "razorpay": "^2.9.6",
     "slugify": "^1.6.8",
     "zod": "^4.3.6"
   },

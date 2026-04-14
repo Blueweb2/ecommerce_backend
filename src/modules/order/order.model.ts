@@ -25,7 +25,7 @@ export interface IOrder extends Document {
     postalCode: string;
     country: string;
   };
-  paymentMethod: "card" | "paypal" | "stripe";
+  paymentMethod: "cod" | "razorpay";
   isPaid: boolean;
   paidAt?: Date;
   notes?: string;
@@ -113,7 +113,7 @@ const orderSchema = new Schema<IOrder>(
     },
     paymentMethod: {
       type: String,
-      enum: ["card", "paypal", "stripe"],
+      enum: ["cod", "razorpay"],
       required: true,
     },
     isPaid: {

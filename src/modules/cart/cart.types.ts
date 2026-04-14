@@ -10,7 +10,7 @@ export interface AddToCartDTO {
   variantId?: string; // ✅ IMPORTANT
 
   quantity: number;
-  price: number;
+  
 
   selectedOptions?: SelectedOption[]; // ✅ replaces selectedSize
 }

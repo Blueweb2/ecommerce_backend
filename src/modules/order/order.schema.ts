@@ -10,7 +10,7 @@ export const shippingAddressSchema = z.object({
 
 export const createOrderSchema = z.object({
   shippingAddress: shippingAddressSchema,
-  paymentMethod: z.enum(["card", "paypal", "stripe"]),
+  paymentMethod: z.enum(["cod", "razorpay"]),
   notes: z.string().optional(),
 });
 

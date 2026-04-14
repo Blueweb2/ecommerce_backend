@@ -25,13 +25,45 @@ const calculateCartTotals = (items: any[]) => {
     { totalPrice: 0, totalQuantity: 0 }
   );
 };
-
 export const getCart = async (userId: string) => {
   const cart = await Cart.findOne({ user: userId })
-    .populate("items.product")
+    .populate("items.product", "name slug image") // ✅ only needed fields
     .lean();
 
-  return cart || { items: [], totalPrice: 0, totalQuantity: 0 };
+  // ✅ If no cart exists
+  if (!cart) {
+    return {
+      items: [],
+      totalPrice: 0,
+      totalQuantity: 0,
+    };
+  }
+
+  // ✅ Transform response (frontend-friendly)
+  return {
+    _id: cart._id,
+    user: cart.user,
+    totalPrice: cart.totalPrice,
+    totalQuantity: cart.totalQuantity,
+
+    items: cart.items.map((item: any) => ({
+      _id: item._id,
+
+      product: {
+        _id: item.product?._id,
+        name: item.product?.name,
+        slug: item.product?.slug,
+        image: item.product?.image,
+      },
+
+      variantId: item.variantId,
+      quantity: item.quantity,
+      price: item.price,
+      selectedOptions: item.selectedOptions || [],
+
+      subtotal: item.price * item.quantity, // ✅ UI ready
+    })),
+  };
 };
 
 export const addToCart = async (
@@ -96,16 +128,33 @@ export const mergeCart = async (
     selectedOptions?: { fieldName: string; value: string }[];
   }[]
 ) => {
+  // 🔹 1. Get or create cart
   let cart = await Cart.findOne({ user: userId });
 
   if (!cart) {
     cart = await Cart.create({ user: userId, items: [] });
   }
 
-  for (const incoming of items) {
-    const product = await Product.findById(incoming.productId);
-    if (!product) continue;
+  if (!items.length) return cart;
 
+  // 🔹 2. Fetch all products in ONE query (performance fix)
+  const productIds = items.map((i) => i.productId);
+
+  const products = await Product.find({
+    _id: { $in: productIds },
+  });
+
+  const productMap = new Map(
+    products.map((p) => [p._id.toString(), p])
+  );
+
+  // 🔹 3. Merge logic
+  for (const incoming of items) {
+    const product = productMap.get(incoming.productId);
+
+    if (!product) continue; // skip invalid products
+
+    // normalize options
     incoming.selectedOptions = normalizeOptions(
       incoming.selectedOptions || []
     );
@@ -117,26 +166,32 @@ export const mergeCart = async (
     if (existing) {
       const newQty = existing.quantity + incoming.quantity;
 
-      if (product.stock < newQty) continue;
-
-      existing.quantity = newQty;
+      // ✅ FIX: do NOT skip → adjust quantity
+      if (product.stock < newQty) {
+        existing.quantity = product.stock;
+      } else {
+        existing.quantity = newQty;
+      }
     } else {
-      if (product.stock < incoming.quantity) continue;
+      // ✅ FIX: do NOT skip → clamp quantity
+      const finalQty =
+        product.stock < incoming.quantity
+          ? product.stock
+          : incoming.quantity;
+
+      if (finalQty <= 0) continue;
 
       cart.items.push({
         product: incoming.productId,
         variantId: incoming.variantId,
-        quantity: incoming.quantity,
-        price: product.price,
+        quantity: finalQty,
+        price: product.price, // ✅ always from DB
         selectedOptions: incoming.selectedOptions,
       } as any);
     }
   }
 
-  const totals = calculateCartTotals(cart.items);
-  cart.totalPrice = totals.totalPrice;
-  cart.totalQuantity = totals.totalQuantity;
-
+  // 🔹 4. Save (totals auto-calculated via pre-save middleware)
   return await cart.save();
 };
 
