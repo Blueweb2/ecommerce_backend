@@ -27,7 +27,7 @@ const calculateCartTotals = (items: any[]) => {
 };
 export const getCart = async (userId: string) => {
   const cart = await Cart.findOne({ user: userId })
-    .populate("items.product", "name slug image") // ✅ only needed fields
+    .populate("items.product", "name slug images") // ✅ only needed fields
     .lean();
 
   // ✅ If no cart exists
@@ -53,7 +53,7 @@ export const getCart = async (userId: string) => {
         _id: item.product?._id,
         name: item.product?.name,
         slug: item.product?.slug,
-        image: item.product?.image,
+        image: item.product?.images?.[0]?.url,
       },
 
       variantId: item.variantId,

@@ -7,6 +7,7 @@ import { env } from "./config/env";
 
 const app = express();
 
+/* 🔹 CORS */
 app.use(
   cors({
     origin: env.CLIENT_URL,
@@ -14,18 +15,29 @@ app.use(
   })
 );
 
-console.log(env.CLIENT_URL, "client url")
+console.log(env.CLIENT_URL, "client url");
 
+/* 🔥 IMPORTANT: RAW BODY FOR WEBHOOK */
+app.use(
+  "/api/webhooks/razorpay",
+  express.raw({ type: "application/json" })
+);
+
+/* 🔹 JSON (AFTER webhook) */
 app.use(express.json());
+
+/* 🔹 Cookies */
 app.use(cookieParser());
 
+/* 🔹 Health Check */
 app.get("/", (req, res) => {
   res.json({ message: "API running..." });
 });
 
+/* 🔹 Routes */
 app.use("/api", routes);
 
-// MUST be last
+/* 🔹 Error Handler (MUST BE LAST) */
 app.use(errorHandler);
 
 export default app;

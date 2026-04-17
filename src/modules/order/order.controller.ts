@@ -3,6 +3,47 @@ import * as orderService from "./order.service";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { sendResponse } from "../../utils/response";
+import { verifyPayment } from "../../utils/razorpay";
+
+
+
+export const retryPaymentHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const { id } = req.params;
+
+    const data = await orderService.createRetryPaymentOrder(id);
+
+    sendResponse(res, 200, "Retry payment order created", data);
+  }
+);
+
+export const requestRefundHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const orderId = req.params.id;
+    const userId = (req as any).user.id;
+
+    const order = await orderService.requestRefund(orderId, userId);
+
+    sendResponse(res, 200, "Refund requested", order);
+  }
+);
+
+export const approveRefundHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const order = await orderService.approveRefund(req.params.id);
+
+    sendResponse(res, 200, "Refund approved", order);
+  }
+);
+
+export const rejectRefundHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const order = await orderService.rejectRefund(req.params.id);
+
+    sendResponse(res, 200, "Refund rejected", order);
+  }
+);
+
 
 export const createOrderHandler = asyncHandler(
   async (req: Request, res: Response) => {
@@ -69,6 +110,14 @@ export const getUserOrdersHandler = asyncHandler(
   }
 );
 
+export const getAdminStatsHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const stats = await orderService.getAdminStats();
+
+    sendResponse(res, 200, "Dashboard stats fetched", stats);
+  }
+);
+
 export const getAllOrdersHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
@@ -104,5 +153,29 @@ export const deleteOrderHandler = asyncHandler(
     }
 
     sendResponse(res, 200, "Order deleted successfully");
+  }
+);
+
+
+export const verifyPaymentHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { razorpayOrderId, paymentId, signature, orderId } = req.body;
+
+    const isValid = verifyPayment(
+      razorpayOrderId,
+      paymentId,
+      signature
+    );
+
+    if (!isValid) {
+      // 🔥 IMPORTANT: store failure
+      await orderService.markPaymentFailed(orderId);
+
+      throw new AppError("Payment verification failed", 400);
+    }
+
+    const order = await orderService.markOrderPaid(orderId);
+
+    sendResponse(res, 200, "Payment verified successfully", order);
   }
 );

@@ -8,8 +8,10 @@ import cloudinaryRoutes from "../modules/cloudinary/cloudinary.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import addressRoutes from "../modules/address/address.routes";
 import wishlistRoutes from "../modules/wishlist/wishlist.routes";
+import webhookRoutes from "./webhook.routes";
 
 const router = Router();
+router.use("/webhooks", webhookRoutes);
 
 // Public routes
 router.use("/auth", authRoutes);
