@@ -10,6 +10,7 @@ import addressRoutes from "../modules/address/address.routes";
 import wishlistRoutes from "../modules/wishlist/wishlist.routes";
 import webhookRoutes from "./webhook.routes";
 import bannerRoutes from "../modules/banner/banner.routes";
+import storyRoutes from "../modules/story/story.routes";
 
 
 const router = Router();
@@ -19,6 +20,7 @@ router.use("/webhooks", webhookRoutes);
 router.use("/auth", authRoutes);
 router.use("/products", productRoutes);
 router.use("/categories", categoryRoutes);
+router.use("/stories", storyRoutes);
 
 // Protected routes
 router.use("/cart", cartRoutes);
