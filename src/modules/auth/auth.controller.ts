@@ -204,6 +204,12 @@ export const logoutHandler = asyncHandler(
   }
 );
 
+// ✅ GET ALL CUSTOMERS (Admin + Superadmin)
+export const getCustomersHandler = asyncHandler(async (req: Request, res: Response) => {
+  const customers = await User.find({ role: "user" }).select("-password");
+  res.json({ data: customers });
+});
+
 // ✅ GET ALL ADMINS (Superadmin only)
 export const getAdminsHandler = asyncHandler(async (req: Request, res: Response) => {
   const admins = await User.find({ role: { $in: ["admin", "superadmin"] } }).select("-password");

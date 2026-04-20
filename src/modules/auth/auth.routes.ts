@@ -6,6 +6,7 @@ import {
   logoutHandler,
   getMeHandler,
   getAdminsHandler,
+  getCustomersHandler,
   getAdminByIdHandler,
   createAdminHandler,
   updateAdminHandler,
@@ -21,6 +22,9 @@ router.post("/login", loginHandler);
 router.post("/refresh-token", refreshTokenHandler);
 router.post("/logout", logoutHandler);
 router.get("/me", protect, getMeHandler);
+
+// Customer Management (Admin + Superadmin)
+router.get("/customers", protect, restrictTo("admin", "superadmin"), getCustomersHandler);
 
 // Admin Management Routes (Superadmin only)
 router.get("/admins", protect, restrictTo("superadmin"), getAdminsHandler);

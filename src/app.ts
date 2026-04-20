@@ -1,9 +1,9 @@
 import express from "express";
+import { env } from "./config/env";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middlewares/errorHandler";
 import routes from "./routes";
-import { env } from "./config/env";
 
 const app = express();
 
