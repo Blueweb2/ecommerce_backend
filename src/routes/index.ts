@@ -9,6 +9,8 @@ import authRoutes from "../modules/auth/auth.routes";
 import addressRoutes from "../modules/address/address.routes";
 import wishlistRoutes from "../modules/wishlist/wishlist.routes";
 import webhookRoutes from "./webhook.routes";
+import bannerRoutes from "../modules/banner/banner.routes";
+
 
 const router = Router();
 router.use("/webhooks", webhookRoutes);
@@ -24,5 +26,6 @@ router.use("/orders", orderRoutes);
 router.use("/address", addressRoutes);
 router.use("/wishlist", wishlistRoutes);
 router.use("/cloudinary", cloudinaryRoutes);
+router.use("/banner", bannerRoutes);
 
 export default router;
