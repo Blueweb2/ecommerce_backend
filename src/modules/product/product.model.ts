@@ -302,10 +302,12 @@ productSchema.pre("findOneAndUpdate", async function () {
   const price = update.price ?? doc?.price;
   const discountPrice = update.discountPrice ?? doc?.discountPrice;
 
-  if (discountPrice && price && discountPrice < price) {
-    update.isOnSale = true;
-  } else {
-    update.isOnSale = false;
+  if (typeof update.isOnSale === "undefined") {
+    if (discountPrice && price && discountPrice < price) {
+      update.isOnSale = true;
+    } else {
+      update.isOnSale = false;
+    }
   }
 
   query.setUpdate(update);

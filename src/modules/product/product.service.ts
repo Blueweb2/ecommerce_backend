@@ -28,7 +28,6 @@ export const getSaleProductsService = async ({
   // 🔥 Filter only sale products
   const filter = {
     isOnSale: true,
-    discountPrice: { $exists: true, $gt: 0 },
   };
 
   const [products, total] = await Promise.all([

@@ -115,6 +115,7 @@ export const createProductSchema = z
     variants: z.array(productVariantSchema).optional(),
 
     isPublished: z.coerce.boolean().optional().default(true),
+    isOnSale: z.coerce.boolean().optional().default(false),
   })
 
   // ✅ ONE PLACE FOR ALL VALIDATION
@@ -211,6 +212,7 @@ export const updateProductSchema = z.object({
   variants: z.array(productVariantSchema).optional(),
 
   isPublished: z.boolean().optional(),
+  isOnSale: z.boolean().optional(),
 }).superRefine((data, ctx) => {
   if (data.discountPrice !== undefined && data.price !== undefined && data.discountPrice >= data.price) {
     ctx.addIssue({
