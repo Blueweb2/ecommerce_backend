@@ -48,6 +48,13 @@ const productVariantSchema = z
         path: ["discountPrice"],
       });
     }
+    if (data.price === undefined && data.discountPrice !== undefined) {
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: "Variant must have price if discountPrice is provided",
+    path: ["price"],
+  });
+}
   });
 
 

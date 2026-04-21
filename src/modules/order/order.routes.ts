@@ -14,6 +14,10 @@ import {
   requestRefundHandler,
   approveRefundHandler,
   rejectRefundHandler,
+  requestReturnHandler,
+  approveReturnHandler,
+  rejectReturnHandler,
+  markReturnReceivedHandler,
 } from "./order.controller";
 
 import { protect, restrictTo } from "../../middlewares/auth";
@@ -43,6 +47,8 @@ router.put("/:id/cancel", cancelOrderHandler);
 router.put("/:id/pay", markOrderPaidHandler);
 
 router.post("/:id/refund", requestRefundHandler);
+
+router.post("/:id/return", requestReturnHandler);
 
 /* =========================
    🟣 ADMIN ROUTES
@@ -76,6 +82,24 @@ router.put(
   "/:id/refund/reject",
   restrictTo("admin", "superadmin"),
   rejectRefundHandler
+);
+
+router.put(
+  "/:id/return/approve",
+  restrictTo("admin", "superadmin"),
+  approveReturnHandler
+);
+
+router.put(
+  "/:id/return/reject",
+  restrictTo("admin", "superadmin"),
+  rejectReturnHandler
+);
+
+router.put(
+  "/:id/return/receive",
+  restrictTo("admin", "superadmin"),
+  markReturnReceivedHandler
 );
 
 router.delete(

@@ -7,6 +7,36 @@ import { Product } from "./product.model";
 import { createProductSchema } from "./product.schema";
 import { Category } from "../category/category.model";
 
+
+import { getSaleProductsService } from "./product.service";
+
+export const getSaleProducts = async (req: Request, res: Response) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const sort = (req.query.sort as string) || "-createdAt";
+
+    const result = await getSaleProductsService({
+      page,
+      limit,
+      sort,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Sale products fetched successfully",
+      data: result.products,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    console.error("❌ getSaleProducts error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch sale products",
+    });
+  }
+};
 // ======================================================
 // ✅ HELPERS (FIXED)
 // ======================================================

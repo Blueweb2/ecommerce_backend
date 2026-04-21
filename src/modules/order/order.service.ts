@@ -82,6 +82,75 @@ export const rejectRefund = async (orderId: string) => {
   return await order.save();
 };
 
+export const requestReturn = async (orderId: string, userId: string, reason: string) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) throw new AppError("Order not found", 404);
+
+  if (order.user.toString() !== userId) {
+    throw new AppError("Unauthorized", 403);
+  }
+
+  if (order.status !== "delivered") {
+    throw new AppError("Only delivered orders can be returned", 400);
+  }
+
+  if (order.returnStatus !== "none" && order.returnStatus !== "rejected") {
+    throw new AppError("A return request already exists", 400);
+  }
+
+  order.returnStatus = "requested";
+  order.returnReason = reason;
+  order.returnRequestedAt = new Date();
+
+  return await order.save();
+};
+
+export const approveReturn = async (orderId: string) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) throw new AppError("Order not found", 404);
+
+  if (order.returnStatus !== "requested") {
+    throw new AppError("Return must be in requested state to approve", 400);
+  }
+
+  order.returnStatus = "approved";
+  return await order.save();
+};
+
+export const rejectReturn = async (orderId: string) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) throw new AppError("Order not found", 404);
+
+  if (order.returnStatus !== "requested") {
+    throw new AppError("Return must be in requested state to reject", 400);
+  }
+
+  order.returnStatus = "rejected";
+  return await order.save();
+};
+
+export const markReturnReceived = async (orderId: string) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) throw new AppError("Order not found", 404);
+
+  if (order.returnStatus !== "approved") {
+    throw new AppError("Return must be approved before it can be marked as received", 400);
+  }
+
+  order.returnStatus = "received";
+
+  // When a returned item is received by the admin, we usually also trigger refund approval.
+  if (order.isPaid) {
+    order.refundStatus = "approved";
+  }
+
+  return await order.save();
+};
+
 export const markPaymentFailed = async (orderId: string) => {
   const order = await Order.findById(orderId);
 

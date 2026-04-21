@@ -23,6 +23,7 @@ export interface ProductVariantDTO {
 
   price?: number;
   discountPrice?: number;
+  isOnSale?: boolean;
   stock: number;
   sku?: string;
 
@@ -70,6 +71,7 @@ export interface ProductResponse {
 
   price: number;
   discountPrice?: number;
+  isOnSale?: boolean;
 
   category: string;
   sections: string[];
@@ -82,6 +84,11 @@ export interface ProductResponse {
 
   attributes: ProductAttributeDTO[];
   variants: ProductVariantDTO[];
+
+  customizable?: {
+    isCustomizable: boolean;
+    fields?: CustomFieldDTO[];
+  };
 
   isPublished: boolean;
 

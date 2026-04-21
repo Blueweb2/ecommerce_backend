@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
-import { Types } from "mongoose";
+import { Query } from "mongoose";
 
 export interface IProductImage {
   url: string;
@@ -10,8 +10,12 @@ export interface IProductImage {
 
 export interface IProductVariant {
   attributes: Record<string, string>;
+
   price?: number;
   discountPrice?: number;
+
+  isOnSale?: boolean; // ✅ ADD THIS
+
   stock: number;
   sku?: string;
   images?: IProductImage[];
@@ -38,27 +42,33 @@ export interface IProduct extends Document {
   keyFeatures: string[];
   price: number;
   discountPrice?: number;
+
+  isOnSale: boolean; // ✅ ADD THIS
+
   category: mongoose.Types.ObjectId;
   sections: string[];
   brand?: string;
   stock: number;
   images: IProductImage[];
+
   attributes: {
     name: string;
     values: string[];
   }[];
+
   variants: IProductVariant[];
 
-customizable: {
-  isCustomizable: boolean;
-  fields: {
-    name: string;
-    type: "text" | "number" | "select";
-    required?: boolean;
-    options?: string[];
-    unit?: string;
-  }[];
-};
+  customizable: {
+    isCustomizable: boolean;
+    fields: {
+      name: string;
+      type: "text" | "number" | "select";
+      required?: boolean;
+      options?: string[];
+      unit?: string;
+    }[];
+  };
+
   isPublished: boolean;
   ratingsAverage: number;
   ratingsCount: number;
@@ -186,6 +196,11 @@ const productSchema = new Schema<IProduct>(
       type: Number,
       min: 0,
     },
+    isOnSale: {
+  type: Boolean,
+  default: false,
+  index: true,
+},
     category: {
       type: Schema.Types.ObjectId,
       ref: "Category",
@@ -274,6 +289,30 @@ const productSchema = new Schema<IProduct>(
     timestamps: true,
   }
 );
+
+
+
+productSchema.pre("findOneAndUpdate", async function () {
+  const query = this as Query<any, any>;
+
+  const update: any = query.getUpdate?.() || {};
+
+  const doc = await query.model.findOne(query.getQuery());
+
+  const price = update.price ?? doc?.price;
+  const discountPrice = update.discountPrice ?? doc?.discountPrice;
+
+  if (discountPrice && price && discountPrice < price) {
+    update.isOnSale = true;
+  } else {
+    update.isOnSale = false;
+  }
+
+  query.setUpdate(update);
+});
+
+
+
 
 // Text index for search
 productSchema.index({ name: "text", description: "text", brand: "text" });

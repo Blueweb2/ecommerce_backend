@@ -21,6 +21,9 @@ export interface OrderResponse {
   totalPrice: number;
   totalQuantity: number;
   status: string;
+  returnStatus?: string;
+  returnReason?: string;
+  returnRequestedAt?: string;
   shippingAddress: any;
   paymentMethod: string;
   isPaid: boolean;
@@ -33,6 +36,10 @@ export interface OrderResponse {
 export interface SelectedOption {
   fieldName: string;
   value: string;
+}
+
+export interface RequestReturnDTO {
+  reason: string;
 }
 
 export interface OrderItemResponse {

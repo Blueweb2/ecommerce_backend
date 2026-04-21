@@ -7,6 +7,52 @@ import { toStringId } from "../../utils/common/toStringId";
 import slugify from "slugify";
 
 
+type GetSaleProductsParams = {
+  page?: number;
+  limit?: number;
+  sort?: string;
+};
+
+export const getSaleProductsService = async ({
+  page = 1,
+  limit = 20,
+  sort = "createdAt-desc",
+}: GetSaleProductsParams) => {
+  const skip = (page - 1) * limit;
+
+  // Map sort strings to MongoDB sort objects
+  let sortOption: any = { createdAt: -1 };
+  if (sort === "price-asc") sortOption = { discountPrice: 1 };
+  if (sort === "price-desc") sortOption = { discountPrice: -1 };
+
+  // 🔥 Filter only sale products
+  const filter = {
+    isOnSale: true,
+    discountPrice: { $exists: true, $gt: 0 },
+  };
+
+  const [products, total] = await Promise.all([
+    Product.find(filter)
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+
+    Product.countDocuments(filter),
+  ]);
+
+  return {
+    products,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+
 // 🔹 Normalize attributes (important for comparison)
 const normalizeAttributes = (attrs?: Record<string, string>) => {
   if (!attrs) return "{}";

@@ -33,6 +33,9 @@ export interface IOrder extends Document {
   paymentStatus: "pending" | "success" | "failed";
 
   refundStatus: "none" | "requested" | "approved" | "rejected"; // 🔥 ADD THIS
+  returnStatus: "none" | "requested" | "approved" | "rejected" | "received"; // 🔥 NEW
+  returnReason?: string;
+  returnRequestedAt?: Date;
 
   isPaid: boolean;
   paidAt?: Date;
@@ -140,6 +143,17 @@ refundStatus: {
   type: String,
   enum: ["none", "requested", "approved", "rejected"],
   default: "none",
+},
+returnStatus: {
+  type: String,
+  enum: ["none", "requested", "approved", "rejected", "received"],
+  default: "none",
+},
+returnReason: {
+  type: String,
+},
+returnRequestedAt: {
+  type: Date,
 },
 
     isPaid: {

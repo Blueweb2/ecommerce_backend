@@ -44,6 +44,41 @@ export const rejectRefundHandler = asyncHandler(
   }
 );
 
+export const requestReturnHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const orderId = req.params.id;
+    const userId = (req as any).user.id;
+    const { reason } = req.body;
+
+    const order = await orderService.requestReturn(orderId, userId, reason);
+
+    sendResponse(res, 200, "Return requested", order);
+  }
+);
+
+export const approveReturnHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const order = await orderService.approveReturn(req.params.id);
+
+    sendResponse(res, 200, "Return approved", order);
+  }
+);
+
+export const rejectReturnHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const order = await orderService.rejectReturn(req.params.id);
+
+    sendResponse(res, 200, "Return rejected", order);
+  }
+);
+
+export const markReturnReceivedHandler = asyncHandler(
+  async (req: Request<{ id: string }>, res: Response) => {
+    const order = await orderService.markReturnReceived(req.params.id);
+
+    sendResponse(res, 200, "Return marked as received", order);
+  }
+);
 
 export const createOrderHandler = asyncHandler(
   async (req: Request, res: Response) => {
