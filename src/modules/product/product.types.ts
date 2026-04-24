@@ -1,3 +1,13 @@
+export const PRODUCT_SECTION_VALUES = [
+  "featured",
+  "best-seller",
+  "new-arrival",
+  "new-in",
+  "top-rated",
+] as const;
+
+export type ProductSection = (typeof PRODUCT_SECTION_VALUES)[number];
+
 export interface ProductImageDTO {
   url: string;
   altText?: string;
@@ -40,7 +50,7 @@ export interface CreateProductDTO {
   discountPrice?: number;
 
   category: string;
-  sections?: string[];
+  sections?: ProductSection[];
 
   brand?: string;
   sku?: string;
@@ -74,7 +84,7 @@ export interface ProductResponse {
   isOnSale?: boolean;
 
   category: string;
-  sections: string[];
+  sections: ProductSection[];
 
   brand?: string;
 

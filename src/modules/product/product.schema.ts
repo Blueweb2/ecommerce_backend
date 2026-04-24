@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PRODUCT_SECTION_VALUES } from "./product.types";
 
 
 const customFieldSchema = z.object({
@@ -76,7 +77,7 @@ export const createProductSchema = z
     category: z.string().min(1),
 
     sections: z
-      .array(z.enum(["featured", "best-seller", "new-arrival", "top-rated"]))
+      .array(z.enum(PRODUCT_SECTION_VALUES))
       .optional(),
 
     brand: z.string().optional(),
@@ -183,7 +184,7 @@ export const updateProductSchema = z.object({
 
   category: z.string().min(1, "Category is required").optional(),
   sections: z.array(
-    z.enum(["featured", "best-seller", "new-arrival", "top-rated"])
+    z.enum(PRODUCT_SECTION_VALUES)
   ).optional(),
   brand: z.string().optional(),
   sku: z.string().regex(/^[A-Z0-9\-]+$/, "SKU must contain only uppercase letters, numbers, and hyphens").optional(),

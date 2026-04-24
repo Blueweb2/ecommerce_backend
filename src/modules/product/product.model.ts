@@ -155,31 +155,31 @@ const productSchema = new Schema<IProduct>(
     },
 
     customizable: {
-  isCustomizable: {
-    type: Boolean,
-    default: false,
-  },
-
-  fields: [
-    {
-      name: {
-        type: String,
-        required: true,
-      },
-      type: {
-        type: String,
-        enum: ["text", "number", "select"],
-        required: true,
-      },
-      required: {
+      isCustomizable: {
         type: Boolean,
         default: false,
       },
-      options: [String],
-      unit: String,
+
+      fields: [
+        {
+          name: {
+            type: String,
+            required: true,
+          },
+          type: {
+            type: String,
+            enum: ["text", "number", "select"],
+            required: true,
+          },
+          required: {
+            type: Boolean,
+            default: false,
+          },
+          options: [String],
+          unit: String,
+        },
+      ],
     },
-  ],
-},
 
     keyFeatures: [
       {
@@ -197,10 +197,10 @@ const productSchema = new Schema<IProduct>(
       min: 0,
     },
     isOnSale: {
-  type: Boolean,
-  default: false,
-  index: true,
-},
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     category: {
       type: Schema.Types.ObjectId,
       ref: "Category",
@@ -292,16 +292,38 @@ const productSchema = new Schema<IProduct>(
 
 
 
-productSchema.pre("findOneAndUpdate", async function () {
-  const query = this as Query<any, any>;
+// 🔥 AUTO SET isOnSale ON SAVE (Creation)
+productSchema.pre("save", function () {
+  if (this.discountPrice && this.price && this.discountPrice < this.price) {
+    this.isOnSale = true;
+  } else if (!this.isOnSale) {
+    this.isOnSale = false;
+  }
+});
 
-  const update: any = query.getUpdate?.() || {};
+
+
+productSchema.pre("findOneAndUpdate", async function () {
+  const query = this;
+
+  const update: any = query.getUpdate() || {};
+
+  // Only run logic if pricing or sale toggle is affected
+  if (
+    typeof update.price === "undefined" &&
+    typeof update.discountPrice === "undefined" &&
+    typeof update.isOnSale === "undefined"
+  ) {
+    return;
+  }
 
   const doc = await query.model.findOne(query.getQuery());
+  if (!doc) return;
 
-  const price = update.price ?? doc?.price;
-  const discountPrice = update.discountPrice ?? doc?.discountPrice;
+  const price = update.price ?? doc.price;
+  const discountPrice = update.discountPrice ?? doc.discountPrice;
 
+  // Auto-manage isOnSale if not explicitly provided in update
   if (typeof update.isOnSale === "undefined") {
     if (discountPrice && price && discountPrice < price) {
       update.isOnSale = true;
@@ -322,4 +344,5 @@ productSchema.index({ "variants.sku": 1 }, { sparse: true });
 
 // Index for queries
 productSchema.index({ category: 1, sections: 1, isPublished: 1 });
+productSchema.index({ isPublished: 1, sections: 1, createdAt: -1 });
 export const Product = mongoose.model<IProduct>("Product", productSchema);

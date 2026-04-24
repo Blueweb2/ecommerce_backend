@@ -8,6 +8,7 @@ import {
   deleteProductHandler,
   searchProductsHandler,
   getFeaturedProductsHandler,
+  getNewProductsHandler,
   getProductVariantsHandler,
   updateProductStockHandler,
   deleteSingleImageHandler,
@@ -34,6 +35,7 @@ const router = Router();
 // Order matters (specific → general)
 
 router.get("/featured", getFeaturedProductsHandler);
+router.get("/new", getNewProductsHandler);
 router.get("/search", searchProductsHandler);
 router.get("/sale", getSaleProducts); // ✅ FIXED POSITION
 router.get("/slug/:slug", getProductBySlugHandler);

@@ -13,6 +13,10 @@ type GetSaleProductsParams = {
   sort?: string;
 };
 
+type GetNewProductsParams = {
+  limit?: number;
+};
+
 export const getSaleProductsService = async ({
   page = 1,
   limit = 20,
@@ -24,14 +28,17 @@ export const getSaleProductsService = async ({
   let sortOption: any = { createdAt: -1 };
   if (sort === "price-asc") sortOption = { discountPrice: 1 };
   if (sort === "price-desc") sortOption = { discountPrice: -1 };
+  if (sort === "createdAt-desc" || sort === "-createdAt") sortOption = { createdAt: -1 };
 
   // 🔥 Filter only sale products
   const filter = {
     isOnSale: true,
+    isPublished: true, // ✅ MUST BE PUBLISHED
   };
 
   const [products, total] = await Promise.all([
     Product.find(filter)
+      .populate("category") // ✅ POPULATE FOR CONSISTENCY
       .sort(sortOption)
       .skip(skip)
       .limit(limit)
@@ -49,6 +56,21 @@ export const getSaleProductsService = async ({
       totalPages: Math.ceil(total / limit),
     },
   };
+};
+
+export const getNewProductsService = async ({
+  limit = 8,
+}: GetNewProductsParams = {}) => {
+  const normalizedLimit = Math.min(Math.max(limit, 8), 12);
+
+  return Product.find({
+    isPublished: true,
+    sections: "new-in",
+  })
+    .select("_id name slug price discountPrice images brand")
+    .sort({ createdAt: -1 })
+    .limit(normalizedLimit)
+    .lean();
 };
 
 
@@ -231,38 +253,38 @@ export const createProduct = async (data: CreateProductDTO) => {
   }
 
   // ===============================
-// ✅ VALIDATE CUSTOMIZATION
-// ===============================
-if (data.customizable?.isCustomizable) {
-  if (!data.customizable.fields || data.customizable.fields.length === 0) {
-    throw new AppError("Custom fields required", 400);
-  }
-
-  const seenFields = new Set();
-
-  for (const field of data.customizable.fields) {
-    const name = field.name.trim().toLowerCase();
-
-    if (seenFields.has(name)) {
-      throw new AppError(`Duplicate custom field: ${name}`, 400);
+  // ✅ VALIDATE CUSTOMIZATION
+  // ===============================
+  if (data.customizable?.isCustomizable) {
+    if (!data.customizable.fields || data.customizable.fields.length === 0) {
+      throw new AppError("Custom fields required", 400);
     }
 
-    seenFields.add(name);
+    const seenFields = new Set();
 
-    // ✅ normalize
-    field.name = name;
+    for (const field of data.customizable.fields) {
+      const name = field.name.trim().toLowerCase();
 
-    // ✅ validate select type
-    if (field.type === "select") {
-      if (!field.options || field.options.length === 0) {
-        throw new AppError(
-          `Options required for select field: ${field.name}`,
-          400
-        );
+      if (seenFields.has(name)) {
+        throw new AppError(`Duplicate custom field: ${name}`, 400);
+      }
+
+      seenFields.add(name);
+
+      // ✅ normalize
+      field.name = name;
+
+      // ✅ validate select type
+      if (field.type === "select") {
+        if (!field.options || field.options.length === 0) {
+          throw new AppError(
+            `Options required for select field: ${field.name}`,
+            400
+          );
+        }
       }
     }
   }
-}
 
   // ===============================
   // SAVE PRODUCT

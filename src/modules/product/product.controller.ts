@@ -9,6 +9,7 @@ import { Category } from "../category/category.model";
 
 
 import { getSaleProductsService } from "./product.service";
+import { getNewProductsService } from "./product.service";
 
 export const getSaleProducts = async (req: Request, res: Response) => {
   try {
@@ -280,6 +281,16 @@ export const getFeaturedProductsHandler = asyncHandler(
     const products = await productService.getFeaturedProducts();
 
     sendResponse(res, 200, "Featured products fetched", products);
+  }
+);
+
+export const getNewProductsHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isFinite(requestedLimit) ? requestedLimit : 8;
+    const products = await getNewProductsService({ limit });
+
+    sendResponse(res, 200, "New in products fetched", products);
   }
 );
 
