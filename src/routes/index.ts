@@ -1,6 +1,7 @@
 import { Router } from "express";
 import productRoutes from "../modules/product/product.routes";
 import categoryRoutes from "../modules/category/category.routes";
+import collectionRoutes from "../modules/collection/collection.routes";
 import userRoutes from "../modules/user/user.routes";
 import cartRoutes from "../modules/cart/cart.routes";
 import orderRoutes from "../modules/order/order.routes";
@@ -20,6 +21,8 @@ router.use("/webhooks", webhookRoutes);
 router.use("/auth", authRoutes);
 router.use("/products", productRoutes);
 router.use("/categories", categoryRoutes);
+router.use("/collections", collectionRoutes);
+router.use("/collection", collectionRoutes);
 router.use("/stories", storyRoutes);
 
 // Protected routes
