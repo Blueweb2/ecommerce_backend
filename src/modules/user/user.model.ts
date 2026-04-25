@@ -9,7 +9,13 @@ export interface IUser extends Document {
   avatar?: string;
   role: "user" | "admin" | "superadmin";
   isActive: boolean;
+
   emailVerified: boolean;
+
+  // 🔥 ADD THESE
+  verificationCode?: string;
+  verificationExpires?: Date;
+
   refreshToken?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -58,6 +64,15 @@ const userSchema = new Schema<IUser>(
     },
     refreshToken: {
       type: String,
+      default: null,
+    },
+    verificationCode: {
+      type: String,
+      default: null,
+    },
+
+    verificationExpires: {
+      type: Date,
       default: null,
     },
   },

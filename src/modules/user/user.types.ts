@@ -30,7 +30,23 @@ export interface LoginDTO {
   password: string;
 }
 
-export interface AuthResponse {
-  user: UserResponse;
+// ✅ NEW
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface VerifyOtpDTO {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  success: boolean;
+  message: string;
   accessToken: string;
+}
+
+export interface ResendOtpDTO {
+  email: string;
 }

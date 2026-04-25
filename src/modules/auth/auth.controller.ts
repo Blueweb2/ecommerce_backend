@@ -8,6 +8,7 @@ import {
 import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { User } from "../user/user.model";
+import { sendEmail } from "../../utils/sendEmail";
 
 // ✅ GET ME
 export const getMeHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -35,13 +36,16 @@ export const getMeHandler = asyncHandler(async (req: Request, res: Response) => 
 export const registerHandler = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, password, phone } = req.body;
 
+  // 🔍 Check existing user
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     throw new AppError("Email already in use", 400);
   }
 
+  // 🔐 Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // 👤 Create user
   const newUser = await User.create({
     name,
     email,
@@ -49,85 +53,202 @@ export const registerHandler = asyncHandler(async (req: Request, res: Response) 
     phone,
     role: "user",
     isActive: true,
+    emailVerified: false,
   });
 
-  const payload = { id: newUser._id, role: newUser.role };
+  // 🔥 Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  const accessToken = signAccessToken(payload);
-  const refreshToken = signRefreshToken(payload);
+  newUser.verificationCode = otp;
+  newUser.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-  newUser.refreshToken = refreshToken;
   await newUser.save();
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  // 📧 Send OTP Email
+  await sendEmail(
+    newUser.email,
+    "Verify Your Email - OTP",
+    `
+      <div style="font-family: Arial, sans-serif;">
+        <h2>Email Verification</h2>
+        <p>Your OTP code is:</p>
+        <h1 style="letter-spacing: 4px;">${otp}</h1>
+        <p>This OTP will expire in 10 minutes.</p>
+      </div>
+    `
+  );
 
-  const safeUser = {
-    id: newUser._id,
-    name: newUser.name,
-    email: newUser.email,
-    role: newUser.role,
-  };
-
-  res.status(201).json({
-    accessToken,
-    user: safeUser,
+  // ✅ Response (NO TOKEN HERE)
+  return res.status(201).json({
+    success: true,
+    message: "OTP sent to your email. Please verify your account.",
   });
 });
 
 // ✅ LOGIN
 export const loginHandler = asyncHandler(async (req: Request, res: Response) => {
-
-  // 🔐 password check
-
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email }).select("+password");
+  // 🔤 Normalize email
+  const emailNormalized = email.trim().toLowerCase();
+
+  const user = await User.findOne({ email: emailNormalized }).select("+password");
 
   if (!user || !user.password) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid credentials",
-    });
+    throw new AppError("Invalid credentials", 400);
   }
 
+  // ❌ Check inactive user
+  if (!user.isActive) {
+    throw new AppError("Account is deactivated", 403);
+  }
+
+  // 🔐 Check password
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid credentials",
-    });
+    throw new AppError("Invalid credentials", 400);
   }
-  const payload = { id: user._id, role: user.role };
 
-  const accessToken = signAccessToken(payload);
-  const refreshToken = signRefreshToken(payload);
+  // 🔥 Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  user.verificationCode = otp;
+  user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-  const safeUser = {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-  };
+  await user.save();
 
-  res.json({
+  // 📧 Send OTP Email
+  await sendEmail(
+    user.email,
+    "Login OTP - Verify Your Account",
+    `
+      <div style="font-family: Arial, sans-serif;">
+        <h2>Login Verification</h2>
+        <p>Your OTP code is:</p>
+        <h1 style="letter-spacing: 4px;">${otp}</h1>
+        <p>This OTP will expire in 10 minutes.</p>
+      </div>
+    `
+  );
+
+  return res.json({
     success: true,
-    accessToken,
-    user: safeUser,
+    message: "OTP sent to your email",
   });
 });
+
+export const verifyOtpHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email, otp } = req.body;
+
+    const emailNormalized = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: emailNormalized });
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (!user.isActive) {
+      throw new AppError("Account is deactivated", 403);
+    }
+
+    // 🔥 FIXED OTP CHECK
+    if (
+      String(user.verificationCode) !== String(otp) ||
+      !user.verificationExpires ||
+      user.verificationExpires < new Date()
+    ) {
+      throw new AppError("Invalid or expired OTP", 400);
+    }
+
+    // ✅ Mark verified
+    user.emailVerified = true;
+    user.verificationCode = undefined;
+    user.verificationExpires = undefined;
+
+    // 🔐 Generate tokens
+    const payload = { id: user._id, role: user.role };
+
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    user.refreshToken = refreshToken;
+
+    await user.save();
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    // ✅ SEND USER ALSO
+    const safeUser = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+
+    return res.json({
+      success: true,
+      message: "Account verified successfully",
+      accessToken,
+      user: safeUser,
+    });
+  }
+);
+
+export const resendOtpHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    // 🔤 Normalize email
+    const emailNormalized = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: emailNormalized });
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    // ❌ Check inactive user
+    if (!user.isActive) {
+      throw new AppError("Account is deactivated", 403);
+    }
+
+    // 🔥 Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.verificationCode = otp;
+    user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    await user.save();
+
+    // 📧 Send email
+    await sendEmail(
+      user.email,
+      "Resend OTP - Verification Code",
+      `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>OTP Verification</h2>
+          <p>Your new OTP code is:</p>
+          <h1 style="letter-spacing: 4px;">${otp}</h1>
+          <p>This OTP will expire in 10 minutes.</p>
+        </div>
+      `
+    );
+
+    return res.json({
+      success: true,
+      message: "OTP resent successfully",
+    });
+  }
+);
+
+
 
 // ✅ REFRESH TOKEN
 export const refreshTokenHandler = asyncHandler(
@@ -144,9 +265,9 @@ export const refreshTokenHandler = asyncHandler(
 
     const user = await User.findById(decoded.id);
 
- if (!user) {
-  throw new AppError("User not found", 401);
-}
+    if (!user) {
+      throw new AppError("User not found", 401);
+    }
 
     // rotate token
     const newRefreshToken = signRefreshToken({

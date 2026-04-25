@@ -11,6 +11,9 @@ import {
   createAdminHandler,
   updateAdminHandler,
   deleteAdminHandler,
+  resendOtpHandler,
+  verifyOtpHandler,
+
 } from "./auth.controller";
 import { protect, restrictTo } from "../../middlewares/auth";
 
@@ -22,6 +25,8 @@ router.post("/login", loginHandler);
 router.post("/refresh-token", refreshTokenHandler);
 router.post("/logout", logoutHandler);
 router.get("/me", protect, getMeHandler);
+router.post("/verify-otp", verifyOtpHandler);
+router.post("/resend-otp", resendOtpHandler);
 
 // Customer Management (Admin + Superadmin)
 router.get("/customers", protect, restrictTo("admin", "superadmin"), getCustomersHandler);
