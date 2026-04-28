@@ -8,6 +8,11 @@ import routes from "./routes";
 
 const app = express();
 
+if (env.NODE_ENV === "production") {
+  // Respect X-Forwarded-For when the API is deployed behind a reverse proxy.
+  app.set("trust proxy", 1);
+}
+
 /* 🔹 CORS */
 app.use(
   cors({
