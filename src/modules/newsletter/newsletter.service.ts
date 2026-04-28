@@ -33,15 +33,27 @@ export const sendOfferToSubscribers = async (subject: string, content: string) =
     throw new AppError("No active subscribers found", 404);
   }
 
-  // Send emails in parallel (consider batching for large lists)
-  const emailPromises = subscribers.map((sub) =>
-    sendEmail(sub.email, subject, content).catch((err) => {
-      console.error(`Failed to send email to ${sub.email}:`, err);
-      return null;
-    })
-  );
+  // ✅ Implement batching to avoid SMTP rate limits
+  const BATCH_SIZE = 10;
+  const DELAY_MS = 1000; // 1 second between batches
 
-  await Promise.all(emailPromises);
+  for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
+    const batch = subscribers.slice(i, i + BATCH_SIZE);
+    
+    await Promise.all(
+      batch.map((sub) =>
+        sendEmail(sub.email, subject, content).catch((err) => {
+          console.error(`Failed to send email to ${sub.email}:`, err);
+          return null;
+        })
+      )
+    );
+
+    // Wait if there are more batches
+    if (i + BATCH_SIZE < subscribers.length) {
+      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+    }
+  }
 
   return { total: subscribers.length };
 };

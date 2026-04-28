@@ -3,6 +3,7 @@ import { env } from "./config/env";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middlewares/errorHandler";
+import { apiRateLimiter } from "./middlewares/rateLimiter";
 import routes from "./routes";
 
 const app = express();
@@ -35,7 +36,7 @@ app.get("/", (req, res) => {
 });
 
 /* 🔹 Routes */
-app.use("/api", routes);
+app.use("/api", apiRateLimiter, routes);
 
 /* 🔹 Error Handler (MUST BE LAST) */
 app.use(errorHandler);
