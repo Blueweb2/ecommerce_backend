@@ -110,48 +110,35 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
     throw new AppError("Invalid credentials", 400);
   }
 
-  // // 🔥 Generate OTP
-  // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // 🔥 Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  // user.verificationCode = otp;
-  // user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
-  // AFTER generating OTP
-const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  user.verificationCode = otp;
+  user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-user.verificationCode = otp;
-user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
-
-await user.save();
-
-// 👇 ADD THIS
-const isDev = process.env.NODE_ENV !== "production";
-
-return res.json({
-  success: true,
-  message: "OTP sent to your email",
-  ...(isDev && { otp }), // 🔥 only in dev
-});
-
-  // await user.save();
+  await user.save();
 
   // 📧 Send OTP Email
-  // await sendEmail(
-  //   user.email,
-  //   "Login OTP - Verify Your Account",
-  //   `
-  //     <div style="font-family: Arial, sans-serif;">
-  //       <h2>Login Verification</h2>
-  //       <p>Your OTP code is:</p>
-  //       <h1 style="letter-spacing: 4px;">${otp}</h1>
-  //       <p>This OTP will expire in 10 minutes.</p>
-  //     </div>
-  //   `
-  // );
+  await sendEmail(
+    user.email,
+    "Login OTP - Verify Your Account",
+    `
+      <div style="font-family: Arial, sans-serif;">
+        <h2>Login Verification</h2>
+        <p>Your OTP code is:</p>
+        <h1 style="letter-spacing: 4px;">${otp}</h1>
+        <p>This OTP will expire in 10 minutes.</p>
+      </div>
+    `
+  );
 
-  // return res.json({
-  //   success: true,
-  //   message: "OTP sent to your email",
-  // });
+  const isDev = process.env.NODE_ENV !== "production";
+
+  return res.json({
+    success: true,
+    message: "OTP sent to your email",
+    ...(isDev && { otp }), // 🔥 only in dev
+  });
 });
 
 export const verifyOtpHandler = asyncHandler(
