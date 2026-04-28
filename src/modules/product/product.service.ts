@@ -5,6 +5,7 @@ import { deleteImageFromCloudinary } from "../cloudinary/cloudinary.service";
 import { generateSmartSKU } from "../../utils/sku/sku.generator";
 import { toStringId } from "../../utils/common/toStringId";
 import slugify from "slugify";
+import mongoose from "mongoose";
 
 
 type GetSaleProductsParams = {
@@ -15,6 +16,81 @@ type GetSaleProductsParams = {
 
 type GetNewProductsParams = {
   limit?: number;
+};
+
+
+export const getRelatedProductsService = async (productId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new AppError("Invalid product ID", 400);
+  }
+
+  const currentProduct = await Product.findById(productId);
+
+  if (!currentProduct) {
+    throw new AppError("Product not found", 404);
+  }
+
+  const minPrice = currentProduct.price * 0.7;
+  const maxPrice = currentProduct.price * 1.3;
+
+  let products: any[] = [];
+  const addedIds = new Set<string>();
+
+  // 🔥 HELPER FUNCTION (PREVENT DUPLICATES EARLY)
+  const addProducts = (items: any[]) => {
+    for (const item of items) {
+      const id = item._id.toString();
+
+      if (!addedIds.has(id)) {
+        products.push(item);
+        addedIds.add(id);
+      }
+
+      if (products.length >= 10) break;
+    }
+  };
+
+  // 🔥 PRIORITY 1 → SAME CATEGORY
+  const categoryProducts = await Product.find({
+    _id: { $ne: currentProduct._id },
+    category: currentProduct.category,
+    isPublished: true,
+  })
+    .limit(10)
+    .select("name slug price discountPrice images brand")
+    .lean();
+
+  addProducts(categoryProducts);
+
+  // 🔥 PRIORITY 2 → BRAND
+  if (products.length < 10 && currentProduct.brand) {
+    const brandProducts = await Product.find({
+      _id: { $ne: currentProduct._id },
+      brand: currentProduct.brand,
+      isPublished: true,
+    })
+      .limit(10)
+      .select("name slug price discountPrice images brand")
+      .lean();
+
+    addProducts(brandProducts);
+  }
+
+  // 🔥 PRIORITY 3 → PRICE RANGE
+  if (products.length < 10) {
+    const priceProducts = await Product.find({
+      _id: { $ne: currentProduct._id },
+      price: { $gte: minPrice, $lte: maxPrice },
+      isPublished: true,
+    })
+      .limit(10)
+      .select("name slug price discountPrice images brand")
+      .lean();
+
+    addProducts(priceProducts);
+  }
+
+  return products;
 };
 
 export const getSaleProductsService = async ({

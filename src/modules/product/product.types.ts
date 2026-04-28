@@ -8,6 +8,9 @@ export const PRODUCT_SECTION_VALUES = [
 
 export type ProductSection = (typeof PRODUCT_SECTION_VALUES)[number];
 
+// =======================
+// IMAGE
+// =======================
 export interface ProductImageDTO {
   url: string;
   altText?: string;
@@ -15,11 +18,17 @@ export interface ProductImageDTO {
   isPrimary?: boolean;
 }
 
+// =======================
+// ATTRIBUTE
+// =======================
 export interface ProductAttributeDTO {
   name: string;
   values: string[];
 }
 
+// =======================
+// CUSTOM FIELD
+// =======================
 export interface CustomFieldDTO {
   name: string;
   type: "text" | "number" | "select";
@@ -28,12 +37,18 @@ export interface CustomFieldDTO {
   unit?: string;
 }
 
+// =======================
+// VARIANT
+// =======================
 export interface ProductVariantDTO {
+  _id?: string; // ✅ add for updates
+
   attributes: Record<string, string>;
 
   price?: number;
   discountPrice?: number;
   isOnSale?: boolean;
+
   stock: number;
   sku?: string;
 
@@ -42,9 +57,15 @@ export interface ProductVariantDTO {
   isActive?: boolean;
 }
 
+// =======================
+// CREATE
+// =======================
 export interface CreateProductDTO {
   name: string;
   description: string;
+
+  deliveryDetails?: string; // ✅ added
+  keyFeatures?: string[];   // ✅ added
 
   price: number;
   discountPrice?: number;
@@ -62,6 +83,7 @@ export interface CreateProductDTO {
   attributes?: ProductAttributeDTO[];
 
   variants?: ProductVariantDTO[];
+
   customizable?: {
     isCustomizable: boolean;
     fields?: CustomFieldDTO[];
@@ -70,14 +92,23 @@ export interface CreateProductDTO {
   isPublished?: boolean;
 }
 
-export interface UpdateProductDTO extends Partial<CreateProductDTO> { }
+// =======================
+// UPDATE
+// =======================
+export interface UpdateProductDTO extends Partial<CreateProductDTO> {}
 
+// =======================
+// RESPONSE
+// =======================
 export interface ProductResponse {
   _id: string;
   name: string;
   slug: string;
   sku: string;
+
   description: string;
+  deliveryDetails?: string; // ✅ added
+  keyFeatures: string[];    // ✅ added
 
   price: number;
   discountPrice?: number;

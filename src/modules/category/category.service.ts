@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Category } from "./category.model";
 import { Product } from "../product/product.model";
 import { AppError } from "../../utils/AppError";
@@ -205,4 +206,23 @@ export const deleteCategory = async (id: string) => {
   await Category.findByIdAndDelete(id);
 
   return category;
+};
+
+/**
+ * Get all descendant category IDs recursively including the parent category ID
+ */
+export const getCategoryDescendants = async (categoryId: string | mongoose.Types.ObjectId) => {
+  let allCategoryIds = [new mongoose.Types.ObjectId(categoryId)];
+  let parentIds = [new mongoose.Types.ObjectId(categoryId)];
+
+  while (parentIds.length > 0) {
+    const children = await Category.find({ parent: { $in: parentIds } }).select("_id").lean();
+    if (children.length === 0) break;
+    
+    const childIds = children.map(c => c._id as mongoose.Types.ObjectId);
+    allCategoryIds.push(...childIds);
+    parentIds = childIds;
+  }
+
+  return allCategoryIds;
 };

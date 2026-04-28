@@ -1,6 +1,7 @@
 import { SortOrder, Types } from "mongoose";
 
 import { Category } from "../category/category.model";
+import { getCategoryDescendants } from "../category/category.service";
 import { Product, IProduct } from "../product/product.model";
 import { AppError } from "../../utils/AppError";
 import { Collection } from "./collection.model";
@@ -79,7 +80,9 @@ const buildProductQuery = async (slug: string) => {
 
   const resolvedCategory = await resolveCategoryFilter(filters?.category);
   if (resolvedCategory) {
-    query.category = resolvedCategory as never;
+    // ✅ Support recursive category lookup
+    const allCategoryIds = await getCategoryDescendants(resolvedCategory.toString());
+    query.category = { $in: allCategoryIds };
   }
 
   if (filters?.type) {

@@ -12,6 +12,7 @@ import wishlistRoutes from "../modules/wishlist/wishlist.routes";
 import webhookRoutes from "./webhook.routes";
 import bannerRoutes from "../modules/banner/banner.routes";
 import storyRoutes from "../modules/story/story.routes";
+import newsletterRoutes from "../modules/newsletter/newsletter.routes";
 
 
 const router = Router();
@@ -24,6 +25,7 @@ router.use("/categories", categoryRoutes);
 router.use("/collections", collectionRoutes);
 router.use("/collection", collectionRoutes);
 router.use("/stories", storyRoutes);
+router.use("/newsletter", newsletterRoutes);
 
 // Protected routes
 router.use("/cart", cartRoutes);

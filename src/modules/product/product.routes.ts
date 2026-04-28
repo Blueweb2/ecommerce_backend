@@ -13,6 +13,7 @@ import {
   updateProductStockHandler,
   deleteSingleImageHandler,
   getSaleProducts,
+  getRelatedProducts,
   
 } from "./product.controller";
 
@@ -41,6 +42,7 @@ router.get("/sale", getSaleProducts); // ✅ FIXED POSITION
 router.get("/slug/:slug", getProductBySlugHandler);
 router.get("/:id/variants", getProductVariantsHandler);
 router.get("/", getProductsHandler);
+router.get("/:id/related", getRelatedProducts);
 router.get("/:id", getProductHandler);
 
 
