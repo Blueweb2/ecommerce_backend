@@ -57,7 +57,7 @@ storySchema.pre("validate", async function () {
 });
 
 // ✅ Add index for performance
-storySchema.index({ slug: 1 });
+
 
 export const Story = mongoose.model<IStory>("Story", storySchema);
 

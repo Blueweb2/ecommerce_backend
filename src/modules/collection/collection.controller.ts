@@ -72,3 +72,33 @@ export const getCollectionBySlugHandler = asyncHandler(
     sendResponse(res, 200, "Collection fetched successfully", result);
   }
 );
+export const getCollectionByIdHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getParam(req.params.id);
+    const collection = await collectionService.getCollectionById(id);
+
+    sendResponse(res, 200, "Collection fetched successfully", collection);
+  }
+);
+
+export const updateCollectionHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getParam(req.params.id);
+    const normalizedBody = normalizeCreateCollectionPayload(
+      req.body as Record<string, any>
+    );
+    const validatedData = createCollectionSchema.partial().parse(normalizedBody);
+    const collection = await collectionService.updateCollection(id, validatedData);
+
+    sendResponse(res, 200, "Collection updated successfully", collection);
+  }
+);
+
+export const deleteCollectionHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getParam(req.params.id);
+    await collectionService.deleteCollection(id);
+
+    sendResponse(res, 200, "Collection deleted successfully");
+  }
+);

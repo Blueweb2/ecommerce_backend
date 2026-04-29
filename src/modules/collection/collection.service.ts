@@ -10,8 +10,10 @@ type CreateCollectionInput = {
   title: string;
   slug: string;
   description: string;
-  image: {
+  image?: {
     url: string;
+    public_id?: string;
+    altText?: string;
   };
   filters?: {
     category?: string;
@@ -29,12 +31,16 @@ type CollectionProductsOptions = {
   sort?: string;
 };
 
-const resolveCategoryFilter = async (category?: string) => {
+const resolveCategoryFilter = async (category?: string | Types.ObjectId | any) => {
   if (!category) {
     return undefined;
   }
 
-  const trimmedCategory = category.trim();
+  if (category instanceof Types.ObjectId) {
+    return category;
+  }
+
+  const trimmedCategory = typeof category === "string" ? category.trim() : category.toString().trim();
   if (!trimmedCategory) {
     return undefined;
   }
@@ -69,7 +75,9 @@ const buildProductQuery = async (slug: string) => {
   const collection = await Collection.findOne({
     slug,
     isActive: true,
-  }).lean();
+  })
+    .populate("filters.category")
+    .lean();
 
   if (!collection) {
     throw new AppError("Collection not found", 404);
@@ -112,7 +120,10 @@ const buildProductQuery = async (slug: string) => {
 };
 
 export const getActiveCollections = async () => {
-  return Collection.find({ isActive: true }).sort({ createdAt: -1 }).lean();
+  return Collection.find({ isActive: true })
+    .populate("filters.category")
+    .sort({ createdAt: -1 })
+    .lean();
 };
 
 export const createCollection = async (data: CreateCollectionInput) => {
@@ -126,10 +137,12 @@ export const createCollection = async (data: CreateCollectionInput) => {
     throw new AppError("Collection slug already exists", 409);
   }
 
-  return Collection.create({
+  const collection = await Collection.create({
     ...data,
     slug: normalizedSlug,
   });
+
+  return collection.populate("filters.category");
 };
 
 export const getCollectionProductsBySlug = async (
@@ -163,4 +176,61 @@ export const getCollectionProductsBySlug = async (
       pages: Math.ceil(total / safeLimit),
     },
   };
+};
+export const getCollectionById = async (id: string) => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid collection ID", 400);
+  }
+
+  const collection = await Collection.findById(id).populate("filters.category").lean();
+  if (!collection) {
+    throw new AppError("Collection not found", 404);
+  }
+
+  return collection;
+};
+
+export const updateCollection = async (id: string, data: Partial<CreateCollectionInput>) => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid collection ID", 400);
+  }
+
+  const collection = await Collection.findById(id);
+  if (!collection) {
+    throw new AppError("Collection not found", 404);
+  }
+
+  if (data.slug) {
+    const normalizedSlug = data.slug.trim().toLowerCase();
+    if (normalizedSlug !== collection.slug) {
+      const existing = await Collection.findOne({ slug: normalizedSlug, _id: { $ne: id } }).select("_id").lean();
+      if (existing) {
+        throw new AppError("Collection slug already exists", 409);
+      }
+      collection.slug = normalizedSlug;
+    }
+  }
+
+  // Update fields
+  if (data.title) collection.title = data.title;
+  if (data.description) collection.description = data.description;
+  if (data.image) collection.image = data.image;
+  if (data.filters) collection.filters = { ...collection.filters, ...data.filters };
+  if (typeof data.isActive === "boolean") collection.isActive = data.isActive;
+
+  await collection.save();
+  return collection.populate("filters.category");
+};
+
+export const deleteCollection = async (id: string) => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid collection ID", 400);
+  }
+
+  const collection = await Collection.findByIdAndDelete(id);
+  if (!collection) {
+    throw new AppError("Collection not found", 404);
+  }
+
+  return collection;
 };

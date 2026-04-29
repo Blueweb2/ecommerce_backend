@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const collectionFiltersSchema = z
   .object({
-    category: z.string().trim().min(1).optional(),
+    category: z.string().trim().optional(),
     type: z.string().trim().min(1).optional(),
     tags: z.array(z.string().trim().min(1)).optional(),
     priceMin: z.coerce.number().min(0).optional(),
@@ -28,7 +28,9 @@ export const createCollectionSchema = z.object({
   description: z.string().trim().min(1),
   image: z.object({
     url: z.string().trim().min(1),
-  }),
+    public_id: z.string().trim().optional(),
+    altText: z.string().trim().optional(),
+  }).optional(),
   filters: collectionFiltersSchema.default({}),
   isActive: z.coerce.boolean().default(true),
 });

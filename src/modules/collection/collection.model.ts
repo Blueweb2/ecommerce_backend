@@ -10,6 +10,8 @@ export interface ICollectionFilters {
 
 export interface ICollectionImage {
   url: string;
+  public_id?: string;
+  altText?: string;
 }
 
 export interface ICollection extends Document {
@@ -44,14 +46,21 @@ const collectionSchema = new Schema<ICollection>(
     image: {
       url: {
         type: String,
-        required: true,
+        trim: true,
+      },
+      public_id: {
+        type: String,
+        trim: true,
+      },
+      altText: {
+        type: String,
         trim: true,
       },
     },
     filters: {
       category: {
-        type: String,
-        trim: true,
+        type: Schema.Types.ObjectId,
+        ref: "Category",
       },
       type: {
         type: String,
@@ -83,7 +92,7 @@ const collectionSchema = new Schema<ICollection>(
   }
 );
 
-collectionSchema.index({ slug: 1 }, { unique: true });
+
 collectionSchema.index({ isActive: 1, createdAt: -1 });
 
 export const Collection = mongoose.model<ICollection>(
