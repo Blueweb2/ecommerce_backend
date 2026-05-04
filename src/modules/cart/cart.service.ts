@@ -16,18 +16,25 @@ const isSameItem = (item: any, incoming: any) => {
       JSON.stringify(normalizeOptions(incoming.selectedOptions || []))
   );
 };
+
 const calculateCartTotals = (items: any[]) => {
   return items.reduce(
-    (acc, item) => ({
-      totalPrice: acc.totalPrice + item.price * item.quantity,
-      totalQuantity: acc.totalQuantity + item.quantity,
-    }),
-    { totalPrice: 0, totalQuantity: 0 }
+    (acc, item) => {
+      const itemGst = (item.price * (item.gstPercentage || 0)) / 100;
+      const gstAmount = itemGst * item.quantity;
+      return {
+        totalPrice: acc.totalPrice + item.price * item.quantity,
+        totalGstAmount: acc.totalGstAmount + gstAmount,
+        totalQuantity: acc.totalQuantity + item.quantity,
+      };
+    },
+    { totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 }
   );
 };
+
 export const getCart = async (userId: string) => {
   const cart = await Cart.findOne({ user: userId })
-    .populate("items.product", "name slug images") // ✅ only needed fields
+    .populate("items.product", "name slug images gstPercentage") // ✅ added gstPercentage
     .lean();
 
   // ✅ If no cart exists
@@ -35,6 +42,7 @@ export const getCart = async (userId: string) => {
     return {
       items: [],
       totalPrice: 0,
+      totalGstAmount: 0,
       totalQuantity: 0,
     };
   }
@@ -44,7 +52,9 @@ export const getCart = async (userId: string) => {
     _id: cart._id,
     user: cart.user,
     totalPrice: cart.totalPrice,
+    totalGstAmount: cart.totalGstAmount,
     totalQuantity: cart.totalQuantity,
+    grandTotal: cart.totalPrice + cart.totalGstAmount,
 
     items: cart.items.map((item: any) => ({
       _id: item._id,
@@ -54,11 +64,14 @@ export const getCart = async (userId: string) => {
         name: item.product?.name,
         slug: item.product?.slug,
         image: item.product?.images?.[0]?.url,
+        gstPercentage: item.product?.gstPercentage || 0,
       },
 
       variantId: item.variantId,
       quantity: item.quantity,
       price: item.price,
+      gstPercentage: item.gstPercentage,
+      gstAmount: item.gstAmount,
       selectedOptions: item.selectedOptions || [],
 
       subtotal: item.price * item.quantity, // ✅ UI ready
@@ -98,6 +111,7 @@ export const addToCart = async (
     }
 
     existingItem.quantity = newQty;
+    existingItem.gstPercentage = product.gstPercentage || 0; // update gst if changed
   } else {
     if (product.stock < dto.quantity) {
       throw new AppError("Insufficient stock", 400);
@@ -108,12 +122,14 @@ export const addToCart = async (
       variantId: dto.variantId,
       quantity: dto.quantity,
       price: product.price,
+      gstPercentage: product.gstPercentage || 0,
       selectedOptions: dto.selectedOptions,
     } as any);
   }
 
   const totals = calculateCartTotals(cart.items);
   cart.totalPrice = totals.totalPrice;
+  cart.totalGstAmount = totals.totalGstAmount;
   cart.totalQuantity = totals.totalQuantity;
 
   return await cart.save();
@@ -172,6 +188,7 @@ export const mergeCart = async (
       } else {
         existing.quantity = newQty;
       }
+      existing.gstPercentage = product.gstPercentage || 0;
     } else {
       // ✅ FIX: do NOT skip → clamp quantity
       const finalQty =
@@ -186,6 +203,7 @@ export const mergeCart = async (
         variantId: incoming.variantId,
         quantity: finalQty,
         price: product.price, // ✅ always from DB
+        gstPercentage: product.gstPercentage || 0,
         selectedOptions: incoming.selectedOptions,
       } as any);
     }
@@ -206,6 +224,7 @@ export const removeFromCart = async (userId: string, itemId: string) => {
 
   const totals = calculateCartTotals(cart.items);
   cart.totalPrice = totals.totalPrice;
+  cart.totalGstAmount = totals.totalGstAmount;
   cart.totalQuantity = totals.totalQuantity;
 
   return await cart.save();
@@ -232,9 +251,11 @@ export const updateCartItem = async (
   }
 
   item.quantity = quantity;
+  item.gstPercentage = product.gstPercentage || 0;
 
   const totals = calculateCartTotals(cart.items);
   cart.totalPrice = totals.totalPrice;
+  cart.totalGstAmount = totals.totalGstAmount;
   cart.totalQuantity = totals.totalQuantity;
 
   return await cart.save();
@@ -243,7 +264,7 @@ export const updateCartItem = async (
 export const clearCart = async (userId: string) => {
   return await Cart.findOneAndUpdate(
     { user: userId },
-    { items: [], totalPrice: 0, totalQuantity: 0 },
+    { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 },
     { new: true }
   );
 };

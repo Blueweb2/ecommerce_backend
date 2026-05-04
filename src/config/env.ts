@@ -23,7 +23,6 @@ export const env = {
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "",
   RAZORPAY_WEBHOOK_SECRET:
     process.env.RAZORPAY_WEBHOOK_SECRET || "",
-  RAZORPAY_SECRET: process.env.RAZORPAY_SECRET || "",
 
   CLOUD_NAME: process.env.CLOUD_NAME || "",
   CLOUD_API_KEY: process.env.CLOUD_API_KEY || "",

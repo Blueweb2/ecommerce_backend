@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { env } from "../config/env";
 
 export const verifyPayment = (
   razorpayOrderId: string,
@@ -8,7 +9,7 @@ export const verifyPayment = (
   const body = razorpayOrderId + "|" + paymentId;
 
   const expectedSignature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_SECRET!)
+    .createHmac("sha256", env.RAZORPAY_KEY_SECRET!)
     .update(body)
     .digest("hex");
 

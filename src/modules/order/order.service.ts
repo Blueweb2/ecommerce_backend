@@ -10,10 +10,10 @@ import { env } from "../../config/env";
 
 let razorpay: Razorpay | null = null;
 
-if (env.RAZORPAY_KEY_ID && env.RAZORPAY_SECRET) {
+if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET  ) {
   razorpay = new Razorpay({
     key_id: env.RAZORPAY_KEY_ID,
-    key_secret: env.RAZORPAY_SECRET,
+    key_secret: env.RAZORPAY_KEY_SECRET  ,
   });
 }
 
@@ -31,13 +31,13 @@ export const createRetryPaymentOrder = async (orderId: string) => {
   }
 
   const razorpayOrder = await razorpay.orders.create({
-    amount: order.totalPrice * 100,
+    amount: Math.round(order.grandTotal * 100), // ✅ changed to grandTotal
     currency: "INR",
   });
 
   return {
     razorpayOrderId: razorpayOrder.id,
-    amount: order.totalPrice,
+    amount: order.grandTotal,
   };
 };
 
@@ -189,6 +189,8 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       product: item.product,
       quantity: item.quantity,
       price: item.price,
+      gstPercentage: item.gstPercentage,
+      gstAmount: item.gstAmount,
       variantId: item.variantId,
       selectedOptions: item.selectedOptions,
     }));
@@ -200,6 +202,8 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
           user: userId,
           items: orderItems,
           totalPrice: cart.totalPrice,
+          totalGstAmount: cart.totalGstAmount,
+          grandTotal: cart.totalPrice + cart.totalGstAmount,
           totalQuantity: cart.totalQuantity,
           shippingAddress: data.shippingAddress,
           paymentMethod: data.paymentMethod,
@@ -228,7 +232,7 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       // clear cart
       await Cart.updateOne(
         { user: userId },
-        { items: [], totalPrice: 0, totalQuantity: 0 },
+        { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 },
         { session }
       );
 
@@ -248,7 +252,7 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       }
 
       const razorpayOrder = await razorpay.orders.create({
-        amount: cart.totalPrice * 100,
+        amount: Math.round((cart.totalPrice + cart.totalGstAmount) * 100),
         currency: "INR",
       });
 
@@ -280,7 +284,11 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
   }
 };
 
-export const markOrderPaid = async (orderId: string) => {
+export const markOrderPaid = async (
+  orderId: string,
+  paymentId?: string,
+  signature?: string
+) => {
   const order = await Order.findById(orderId);
 
   if (!order) throw new AppError("Order not found", 404);
@@ -290,23 +298,31 @@ export const markOrderPaid = async (orderId: string) => {
   // ✅ mark paid
   order.isPaid = true;
   order.paidAt = new Date();
+
+  // 🔥 ADD THIS (CRITICAL)
+  if (paymentId) order.paymentId = paymentId;
+  if (signature) order.razorpaySignature = signature;
+  order.paymentStatus = "success";
+
   await order.save();
 
-  // ✅ reduce stock
+  // reduce stock
   for (const item of order.items) {
     await Product.findByIdAndUpdate(item.product, {
       $inc: { stock: -item.quantity },
     });
   }
 
-  // ✅ clear cart
+  // clear cart
   await Cart.updateOne(
     { user: order.user },
-    { items: [], totalPrice: 0, totalQuantity: 0 }
+    { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 }
   );
 
   return order;
 };
+
+
 export const cancelOrder = async (orderId: string, userId: string) => {
   const order = await Order.findById(orderId);
 
@@ -348,7 +364,7 @@ export const getAdminStats = async () => {
     {
       $group: {
         _id: null,
-        total: { $sum: "$totalPrice" },
+        total: { $sum: "$grandTotal" }, // ✅ changed to grandTotal
       },
     },
   ]);
@@ -374,7 +390,7 @@ export const getAdminStats = async () => {
     {
       $group: {
         _id: { $month: "$createdAt" },
-        revenue: { $sum: "$totalPrice" },
+        revenue: { $sum: "$grandTotal" }, // ✅ changed to grandTotal
       },
     },
     { $sort: { "_id": 1 } },

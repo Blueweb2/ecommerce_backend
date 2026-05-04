@@ -13,6 +13,8 @@ export interface ICartItem {
 
   quantity: number;
   price: number;
+  gstPercentage: number;
+  gstAmount: number;
 
   selectedOptions?: ISelectedOption[];
 }
@@ -23,6 +25,7 @@ export interface ICart extends Document {
   items: ICartItem[];
 
   totalPrice: number;
+  totalGstAmount: number;
   totalQuantity: number;
 
   createdAt: Date;
@@ -61,6 +64,16 @@ const cartItemSchema = new Schema<ICartItem>(
       min: 0,
     },
 
+    gstPercentage: {
+      type: Number,
+      default: 0,
+    },
+
+    gstAmount: {
+      type: Number,
+      default: 0,
+    },
+
     selectedOptions: [selectedOptionSchema],
   },
   {
@@ -89,6 +102,12 @@ const cartSchema = new Schema<ICart>(
       min: 0,
     },
 
+    totalGstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     totalQuantity: {
       type: Number,
       default: 0,
@@ -106,14 +125,21 @@ cartSchema.pre("save", function () {
   const cart = this as any;
 
   const totals = cart.items.reduce(
-    (acc: any, item: any) => ({
-      totalPrice: acc.totalPrice + item.price * item.quantity,
-      totalQuantity: acc.totalQuantity + item.quantity,
-    }),
-    { totalPrice: 0, totalQuantity: 0 }
+    (acc: any, item: any) => {
+      const itemGst = (item.price * (item.gstPercentage || 0)) / 100;
+      item.gstAmount = itemGst * item.quantity;
+      
+      return {
+        totalPrice: acc.totalPrice + item.price * item.quantity,
+        totalGstAmount: acc.totalGstAmount + item.gstAmount,
+        totalQuantity: acc.totalQuantity + item.quantity,
+      };
+    },
+    { totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 }
   );
 
   cart.totalPrice = totals.totalPrice;
+  cart.totalGstAmount = totals.totalGstAmount;
   cart.totalQuantity = totals.totalQuantity;
 });
 

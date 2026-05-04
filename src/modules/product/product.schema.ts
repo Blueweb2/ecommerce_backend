@@ -117,6 +117,15 @@ export const createProductSchema = z
 
     isPublished: z.coerce.boolean().optional().default(true),
     isOnSale: z.coerce.boolean().optional().default(false),
+    gstPercentage: z.coerce.number().min(0).max(100).optional().default(0),
+    specifications: z
+      .array(
+        z.object({
+          name: z.string().min(1),
+          value: z.string().min(1),
+        })
+      )
+      .optional(),
   })
 
   // ✅ ONE PLACE FOR ALL VALIDATION
@@ -214,6 +223,15 @@ export const updateProductSchema = z.object({
 
   isPublished: z.boolean().optional(),
   isOnSale: z.boolean().optional(),
+  gstPercentage: z.number().min(0).max(100).optional(),
+  specifications: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        value: z.string().min(1),
+      })
+    )
+    .optional(),
 }).superRefine((data, ctx) => {
   if (data.discountPrice !== undefined && data.price !== undefined && data.discountPrice >= data.price) {
     ctx.addIssue({

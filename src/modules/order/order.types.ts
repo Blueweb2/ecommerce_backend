@@ -21,6 +21,10 @@ export interface OrderResponse {
   totalPrice: number;
   totalQuantity: number;
   status: string;
+  razorpayOrderId?: string;
+paymentId?: string;
+razorpaySignature?: string;
+paymentStatus: "pending" | "success" | "failed";
   returnStatus?: string;
   returnReason?: string;
   returnRequestedAt?: string;

@@ -107,8 +107,13 @@ export const cancelOrderHandler = asyncHandler(
 export const markOrderPaidHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const orderId = req.params.id as string;
+    const { paymentId, signature } = req.body;
 
-    const order = await orderService.markOrderPaid(orderId);
+    const order = await orderService.markOrderPaid(
+      orderId,
+      paymentId,
+      signature
+    );
 
     if (!order) {
       throw new AppError("Order not found", 404);
@@ -117,6 +122,8 @@ export const markOrderPaidHandler = asyncHandler(
     sendResponse(res, 200, "Order marked as paid", order);
   }
 );
+
+
 export const getOrderHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const orderId = req.params.id as string;
@@ -203,13 +210,15 @@ export const verifyPaymentHandler = asyncHandler(
     );
 
     if (!isValid) {
-      // 🔥 IMPORTANT: store failure
       await orderService.markPaymentFailed(orderId);
-
       throw new AppError("Payment verification failed", 400);
     }
 
-    const order = await orderService.markOrderPaid(orderId);
+    const order = await orderService.markOrderPaid(
+      orderId,
+      paymentId,
+      signature
+    );
 
     sendResponse(res, 200, "Payment verified successfully", order);
   }

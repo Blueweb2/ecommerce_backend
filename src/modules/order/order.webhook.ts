@@ -51,19 +51,17 @@ export const handleRazorpayWebhook = async (
         razorpayOrderId: payment.order_id,
       });
 
-      if (!order) {
-        console.log("Order not found for webhook");
-        return res.status(200).json({ status: "ok" });
-      }
+      if (!order) return res.status(200).json({ status: "ok" });
 
       if (!order.isPaid) {
         order.isPaid = true;
         order.paymentStatus = "success";
         order.paidAt = new Date();
 
-        await order.save();
+        order.paymentId = payment.id;
+        order.razorpayOrderId = payment.order_id;
 
-        console.log("✅ Payment marked as success:", order._id);
+        await order.save();
       }
     }
 

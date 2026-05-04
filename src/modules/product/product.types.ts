@@ -90,6 +90,7 @@ export interface CreateProductDTO {
   };
 
   isPublished?: boolean;
+  gstPercentage?: number;
 }
 
 // =======================
@@ -138,4 +139,5 @@ export interface ProductResponse {
 
   createdAt: string;
   updatedAt: string;
+  gstPercentage: number;
 }

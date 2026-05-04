@@ -4,6 +4,8 @@ export interface IOrderItem {
   product: mongoose.Types.ObjectId;
   quantity: number;
   price: number;
+  gstPercentage: number;
+  gstAmount: number;
   variantId?: string;
   selectedOptions?: {
     fieldName: string;
@@ -16,6 +18,8 @@ export interface IOrder extends Document {
   items: IOrderItem[];
 
   totalPrice: number;
+  totalGstAmount: number;
+  grandTotal: number;
   totalQuantity: number;
 
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
@@ -31,6 +35,10 @@ export interface IOrder extends Document {
   paymentMethod: "cod" | "razorpay";
 
   paymentStatus: "pending" | "success" | "failed";
+
+  razorpayOrderId?: string;
+  paymentId?: string;
+  razorpaySignature?: string;
 
   refundStatus: "none" | "requested" | "approved" | "rejected"; // 🔥 ADD THIS
   returnStatus: "none" | "requested" | "approved" | "rejected" | "received"; // 🔥 NEW
@@ -71,6 +79,14 @@ const orderItemSchema = new Schema<IOrderItem>(
       required: true,
       min: 0,
     },
+    gstPercentage: {
+      type: Number,
+      default: 0,
+    },
+    gstAmount: {
+      type: Number,
+      default: 0,
+    },
     variantId: String,
     selectedOptions: {
       type: [selectedOptionSchema],
@@ -110,6 +126,18 @@ const orderSchema = new Schema<IOrder>(
       min: 0,
     },
 
+    totalGstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    grandTotal: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
     totalQuantity: {
       type: Number,
       required: true,
@@ -138,6 +166,19 @@ const orderSchema = new Schema<IOrder>(
   enum: ["pending", "success", "failed"],
   default: "pending",
   index: true, // ✅ good for queries
+},
+razorpayOrderId: {
+  type: String,
+  index: true,
+},
+
+paymentId: {
+  type: String,
+},
+
+razorpaySignature: {
+  type: String,
+  index: true,
 },
 refundStatus: {
   type: String,

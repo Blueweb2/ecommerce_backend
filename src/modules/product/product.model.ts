@@ -72,6 +72,11 @@ export interface IProduct extends Document {
   isPublished: boolean;
   ratingsAverage: number;
   ratingsCount: number;
+  gstPercentage: number;
+  specifications: {
+    name: string;
+    value: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -284,6 +289,17 @@ const productSchema = new Schema<IProduct>(
       default: 0,
       min: 0,
     },
+    gstPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    specifications: [
+      {
+        name: { type: String, required: true },
+        value: { type: String, required: true },
+      },
+    ],
   },
   {
     timestamps: true,

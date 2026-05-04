@@ -424,3 +424,153 @@ export const deleteAdminHandler = asyncHandler(async (req: Request, res: Respons
 
   res.json({ message: "Admin deleted successfully" });
 });
+// ✅ UPDATE PROFILE (Name, Phone)
+export const updateProfileHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { name, phone } = req.body;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (name) user.name = name;
+  if (phone) user.phone = phone;
+
+  await user.save();
+
+  const safeUser = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    phone: user.phone,
+  };
+
+  res.json({ success: true, user: safeUser });
+});
+
+// ✅ CHANGE PASSWORD
+export const changePasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { oldPassword, newPassword } = req.body;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await User.findById(userId).select("+password");
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Check old password
+  const isMatch = await bcrypt.compare(oldPassword, user.password);
+  if (!isMatch) {
+    throw new AppError("Old password is incorrect", 400);
+  }
+
+  // Hash and save new password
+  user.password = await bcrypt.hash(newPassword, 10);
+  await user.save();
+
+  res.json({ success: true, message: "Password changed successfully" });
+});
+
+// ✅ REQUEST EMAIL CHANGE (Send OTP to NEW email)
+export const requestEmailChangeHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { newEmail } = req.body;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (newEmail === user.email) {
+    throw new AppError("New email must be different from current email", 400);
+  }
+
+  // Check if new email is already in use
+  const existingUser = await User.findOne({ email: newEmail });
+  if (existingUser) {
+    throw new AppError("Email already in use", 400);
+  }
+
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  user.verificationCode = otp;
+  user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+  await user.save();
+
+  // Send OTP to NEW email
+  await sendEmail(
+    newEmail,
+    "Verify Your New Email - OTP",
+    `
+      <div style="font-family: Arial, sans-serif;">
+        <h2>Email Change Verification</h2>
+        <p>You requested to change your email to this address. Your OTP code is:</p>
+        <h1 style="letter-spacing: 4px;">${otp}</h1>
+        <p>This OTP will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+      </div>
+    `
+  );
+
+  res.json({ success: true, message: "OTP sent to your new email address" });
+});
+
+// ✅ VERIFY EMAIL CHANGE
+export const verifyEmailChangeHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { newEmail, otp } = req.body;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (
+    String(user.verificationCode) !== String(otp) ||
+    !user.verificationExpires ||
+    user.verificationExpires < new Date()
+  ) {
+    throw new AppError("Invalid or expired OTP", 400);
+  }
+
+  // Check again if new email is already in use (race condition)
+  const existingUser = await User.findOne({ email: newEmail });
+  if (existingUser) {
+    throw new AppError("Email already in use", 400);
+  }
+
+  // Update email
+  user.email = newEmail;
+  user.verificationCode = undefined;
+  user.verificationExpires = undefined;
+  user.emailVerified = true;
+
+  await user.save();
+
+  const safeUser = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
+
+  res.json({ success: true, message: "Email updated successfully", user: safeUser });
+});
