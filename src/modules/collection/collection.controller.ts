@@ -8,39 +8,34 @@ import { createCollectionSchema } from "./collection.schema";
 const getParam = (param: string | string[]) =>
   Array.isArray(param) ? param[0] : param;
 
-const normalizeCreateCollectionPayload = (raw: Record<string, any>) => {
-  const priceRange = raw?.filters?.priceRange;
+const normalizeCollectionPayload = (raw: Record<string, any>) => ({
+  title: raw.title,
+  slug: raw.slug,
+  description: raw.description,
+  category: raw.category,
+  image: raw.image ?? raw.bannerImage,
+  cta: raw.cta,
+  priority: raw.priority,
+  isActive: raw.isActive,
+});
 
-  return {
-    title: raw.title,
-    slug: raw.slug,
-    description: raw.description,
-    image: raw.image ?? raw.bannerImage,
-    filters: {
-      category: raw?.filters?.category,
-      type: raw?.filters?.type,
-      tags: raw?.filters?.tags,
-      priceMin:
-        raw?.filters?.priceMin ??
-        (priceRange && typeof priceRange.min !== "undefined"
-          ? priceRange.min
-          : undefined),
-      priceMax:
-        raw?.filters?.priceMax ??
-        (priceRange && typeof priceRange.max !== "undefined"
-          ? priceRange.max
-          : undefined),
-    },
-    isActive: raw.isActive,
-  };
-};
+export const getCollectionsByCategoryHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const categoryId = getParam(req.params.categoryId);
+
+    const collections = await collectionService.getCollectionsByCategory(categoryId);
+
+    sendResponse(res, 200, "Collections fetched", collections);
+  }
+);
 
 export const createCollectionHandler = asyncHandler(
   async (req: Request, res: Response) => {
-    const normalizedBody = normalizeCreateCollectionPayload(
+    const normalizedBody = normalizeCollectionPayload(
       req.body as Record<string, any>
     );
     const validatedData = createCollectionSchema.parse(normalizedBody);
+
     const collection = await collectionService.createCollection(validatedData);
 
     sendResponse(res, 201, "Collection created successfully", collection);
@@ -72,6 +67,7 @@ export const getCollectionBySlugHandler = asyncHandler(
     sendResponse(res, 200, "Collection fetched successfully", result);
   }
 );
+
 export const getCollectionByIdHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const id = getParam(req.params.id);
@@ -84,7 +80,7 @@ export const getCollectionByIdHandler = asyncHandler(
 export const updateCollectionHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const id = getParam(req.params.id);
-    const normalizedBody = normalizeCreateCollectionPayload(
+    const normalizedBody = normalizeCollectionPayload(
       req.body as Record<string, any>
     );
     const validatedData = createCollectionSchema.partial().parse(normalizedBody);

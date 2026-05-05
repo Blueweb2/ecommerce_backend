@@ -1,26 +1,28 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export interface ICollectionFilters {
-  category?: string;
-  type?: string;
-  tags?: string[];
-  priceMin?: number;
-  priceMax?: number;
-}
-
-export interface ICollectionImage {
-  url: string;
-  public_id?: string;
-  altText?: string;
-}
-
 export interface ICollection extends Document {
   title: string;
   slug: string;
-  description: string;
-  image: ICollectionImage;
-  filters: ICollectionFilters;
+  description?: string;
+
+  // 🔥 IMPORTANT: direct category relation
+  category: mongoose.Types.ObjectId;
+
+  // Optional thumbnail (future use)
+  image?: {
+    url: string;
+    public_id?: string;
+    altText?: string;
+  };
+
+  // CTA text (Shop now / Explore)
+  cta?: string;
+
+  // control ordering in UI
+  priority: number;
+
   isActive: boolean;
+
   createdAt: Date;
 }
 
@@ -31,56 +33,47 @@ const collectionSchema = new Schema<ICollection>(
       required: true,
       trim: true,
     },
+
     slug: {
       type: String,
       required: true,
       unique: true,
-      trim: true,
       lowercase: true,
+      trim: true,
     },
+
     description: {
       type: String,
-      required: true,
       trim: true,
     },
+
+    // ✅ direct reference (VERY IMPORTANT)
+    category: {
+      type: Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+      index: true,
+    },
+
+
+
     image: {
-      url: {
-        type: String,
-        trim: true,
-      },
-      public_id: {
-        type: String,
-        trim: true,
-      },
-      altText: {
-        type: String,
-        trim: true,
-      },
+      url: String,
+      public_id: String,
+      altText: String,
     },
-    filters: {
-      category: {
-        type: Schema.Types.ObjectId,
-        ref: "Category",
-      },
-      type: {
-        type: String,
-        trim: true,
-      },
-      tags: [
-        {
-          type: String,
-          trim: true,
-        },
-      ],
-      priceMin: {
-        type: Number,
-        min: 0,
-      },
-      priceMax: {
-        type: Number,
-        min: 0,
-      },
+
+    cta: {
+      type: String,
+      default: "Shop now",
     },
+
+    // 🔥 control order
+    priority: {
+      type: Number,
+      default: 0,
+    },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -92,7 +85,8 @@ const collectionSchema = new Schema<ICollection>(
   }
 );
 
-
+// 🔥 useful indexes
+collectionSchema.index({ category: 1, priority: -1 });
 collectionSchema.index({ isActive: 1, createdAt: -1 });
 
 export const Collection = mongoose.model<ICollection>(

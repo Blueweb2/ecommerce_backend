@@ -1,13 +1,23 @@
 import mongoose from "mongoose";
+import slugify from "slugify";
+
 import { Category } from "./category.model";
 import { Product } from "../product/product.model";
+import { Collection } from "../collection/collection.model";
 import { AppError } from "../../utils/AppError";
-import slugify from "slugify";
 
 type CategoryImageInput = {
   url: string;
   public_id: string;
   altText?: string;
+};
+
+type CategoryCustomFieldInput = {
+  name: string;
+  type: "text" | "number" | "select";
+  required?: boolean;
+  options?: string[];
+  unit?: string;
 };
 
 type CategoryPayload = {
@@ -16,18 +26,19 @@ type CategoryPayload = {
   image?: CategoryImageInput;
   parent?: string | null;
   isActive?: boolean;
+  isCustomizable?: boolean;
+  customFields?: CategoryCustomFieldInput[];
   slug?: string;
   level?: number;
 };
 
-const generateSlug = (name: string): string => {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+const ensureValidCategoryId = (id: string, label = "category ID") => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError(`Invalid ${label}`, 400);
+  }
 };
+
+const normalizeParentId = (parent?: string | null) => parent || null;
 
 const buildUniqueSlug = async (baseSlug: string, excludeId?: string) => {
   let slug = baseSlug;
@@ -62,10 +73,15 @@ const ensureUniqueCategoryName = async (
   }
 };
 
-const assertValidParent = async (categoryId: string, parentId: string | null) => {
+const assertValidParent = async (
+  categoryId: string,
+  parentId: string | null
+) => {
   if (!parentId) {
     return 0;
   }
+
+  ensureValidCategoryId(parentId, "parent category ID");
 
   if (categoryId && categoryId === parentId) {
     throw new AppError("Category cannot be its own parent", 400);
@@ -81,7 +97,10 @@ const assertValidParent = async (categoryId: string, parentId: string | null) =>
 
   while (currentParent) {
     if (currentParent.toString() === categoryId) {
-      throw new AppError("Category cannot be moved under its own descendant", 400);
+      throw new AppError(
+        "Category cannot be moved under its own descendant",
+        400
+      );
     }
 
     const ancestor = await Category.findById(currentParent).select("parent");
@@ -103,26 +122,36 @@ const updateDescendantLevels = async (categoryId: string, level: number) => {
   );
 };
 
+const assertCustomizableState = (
+  isCustomizable: boolean,
+  customFields?: CategoryCustomFieldInput[]
+) => {
+  if (isCustomizable && (!customFields || customFields.length === 0)) {
+    throw new AppError(
+      "Custom fields required when category is customizable",
+      400
+    );
+  }
+};
+
 export const createCategory = async (data: CategoryPayload) => {
-  const { name, parent } = data;
+  const { name } = data;
+  const parent = normalizeParentId(data.parent);
 
   if (!name) {
     throw new AppError("Category name is required", 400);
   }
 
-  // ✅ unique name check
-  await ensureUniqueCategoryName(name, parent || null);
+  assertCustomizableState(data.isCustomizable ?? false, data.customFields);
+  await ensureUniqueCategoryName(name, parent);
 
-  // ✅ slug
   const baseSlug = slugify(name, { lower: true, strict: true });
   const slug = await buildUniqueSlug(baseSlug);
-
-  // ✅ level
-  const level = await assertValidParent("", parent || null);
+  const level = await assertValidParent("", parent);
 
   const category = await Category.create({
     ...data,
-    parent: parent || null,
+    parent,
     slug,
     level,
   });
@@ -131,9 +160,12 @@ export const createCategory = async (data: CategoryPayload) => {
 };
 
 export const getCategoryTree = async () => {
-  const categories = await Category.find({ isActive: true }).sort({ name: 1 }).lean();
+  const categories = await Category.find({ isActive: true })
+    .sort({ name: 1 })
+    .lean();
 
-  const map: Record<string, { children: unknown[] } & Record<string, unknown>> = {};
+  const map: Record<string, { children: unknown[] } & Record<string, unknown>> =
+    {};
   const roots: Array<{ children: unknown[] } & Record<string, unknown>> = [];
 
   categories.forEach((cat) => {
@@ -153,38 +185,93 @@ export const getCategoryTree = async () => {
 };
 
 export const getAllCategories = async () => {
-  return await Category.find({ isActive: true }).sort({ name: 1 });
+  return Category.find({ isActive: true }).sort({ name: 1 });
 };
 
 export const getCategoryById = async (id: string) => {
-  return await Category.findById(id);
+  ensureValidCategoryId(id);
+  return Category.findById(id);
 };
 
 export const getCategoryBySlug = async (slug: string) => {
-  return await Category.findOne({ slug });
+  return Category.findOne({ slug });
 };
 
-export const updateCategory = async (id: string, data: any) => {
-  if (data.name) {
-    let slug = slugify(data.name, { lower: true, strict: true });
+export const updateCategory = async (id: string, data: CategoryPayload) => {
+  ensureValidCategoryId(id);
 
-    const existingSlug = await Category.findOne({ slug });
-
-    if (existingSlug && existingSlug._id.toString() !== id) {
-      slug = `${slug}-${Date.now()}`;
-    }
-
-    data.slug = slug;
+  const category = await Category.findById(id);
+  if (!category) {
+    throw new AppError("Category not found", 404);
   }
 
-  const updated = await Category.findByIdAndUpdate(id, data, {
-    new: true,
-  });
+  const nextName = data.name ?? category.name;
+  const currentParentId = category.parent ? category.parent.toString() : null;
+  const nextParentId =
+    typeof data.parent !== "undefined"
+      ? normalizeParentId(data.parent)
+      : currentParentId;
 
-  return updated;
+  const nextIsCustomizable =
+    typeof data.isCustomizable === "boolean"
+      ? data.isCustomizable
+      : category.isCustomizable;
+  const nextCustomFields =
+    typeof data.customFields !== "undefined"
+      ? data.customFields
+      : category.customFields;
+
+  assertCustomizableState(nextIsCustomizable, nextCustomFields);
+  await ensureUniqueCategoryName(nextName, nextParentId, id);
+
+  const parentChanged = nextParentId !== currentParentId;
+
+  if (typeof data.name !== "undefined") {
+    const baseSlug = slugify(data.name, { lower: true, strict: true });
+    category.name = data.name;
+    category.slug = await buildUniqueSlug(baseSlug, id);
+  }
+
+  if (typeof data.description !== "undefined") {
+    category.description = data.description;
+  }
+
+  if (typeof data.image !== "undefined") {
+    category.image = data.image;
+  }
+
+  if (typeof data.isActive === "boolean") {
+    category.isActive = data.isActive;
+  }
+
+  if (typeof data.isCustomizable === "boolean") {
+    category.isCustomizable = data.isCustomizable;
+  }
+
+  if (typeof data.customFields !== "undefined") {
+    category.customFields = data.customFields;
+  }
+
+  if (typeof data.parent !== "undefined") {
+    const level = await assertValidParent(id, nextParentId);
+    category.parent = nextParentId
+      ? new mongoose.Types.ObjectId(nextParentId)
+      : null;
+    category.level = level;
+  }
+
+  await category.save();
+
+  if (parentChanged) {
+    await updateDescendantLevels(category._id.toString(), category.level);
+  }
+
+  return category;
 };
 
 export const deleteCategory = async (id: string) => {
+  ensureValidCategoryId(id);
+
   const category = await Category.findById(id);
 
   if (!category) {
@@ -203,23 +290,31 @@ export const deleteCategory = async (id: string) => {
     throw new AppError("Cannot delete category with linked products", 400);
   }
 
+  const hasCollections = await Collection.findOne({ category: id }).select("_id");
+
+  if (hasCollections) {
+    throw new AppError("Cannot delete category with linked collections", 400);
+  }
+
   await Category.findByIdAndDelete(id);
 
   return category;
 };
 
-/**
- * Get all descendant category IDs recursively including the parent category ID
- */
-export const getCategoryDescendants = async (categoryId: string | mongoose.Types.ObjectId) => {
+export const getCategoryDescendants = async (
+  categoryId: string | mongoose.Types.ObjectId
+) => {
   let allCategoryIds = [new mongoose.Types.ObjectId(categoryId)];
   let parentIds = [new mongoose.Types.ObjectId(categoryId)];
 
   while (parentIds.length > 0) {
-    const children = await Category.find({ parent: { $in: parentIds } }).select("_id").lean();
+    const children = await Category.find({ parent: { $in: parentIds } })
+      .select("_id")
+      .lean();
+
     if (children.length === 0) break;
-    
-    const childIds = children.map(c => c._id as mongoose.Types.ObjectId);
+
+    const childIds = children.map((child) => child._id as mongoose.Types.ObjectId);
     allCategoryIds.push(...childIds);
     parentIds = childIds;
   }
