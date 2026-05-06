@@ -8,7 +8,6 @@ import { Collection } from "./collection.model";
 
 type CreateCollectionInput = {
   title: string;
-  slug: string;
   description?: string;
   category: string;
   image?: {
@@ -62,20 +61,11 @@ export const getActiveCollections = async () => {
 };
 
 export const createCollection = async (data: CreateCollectionInput) => {
-  const normalizedSlug = data.slug.trim().toLowerCase();
   const categoryId = await validateCategoryReference(data.category);
-
-  const existing = await Collection.findOne({ slug: normalizedSlug })
-    .select("_id")
-    .lean();
-  if (existing) {
-    throw new AppError("Collection slug already exists", 409);
-  }
 
   const collection = await Collection.create({
     ...data,
     category: categoryId,
-    slug: normalizedSlug,
   });
 
   return collection.populate("category");
@@ -167,24 +157,6 @@ export const updateCollection = async (
   const collection = await Collection.findById(id);
   if (!collection) {
     throw new AppError("Collection not found", 404);
-  }
-
-  if (typeof data.slug !== "undefined") {
-    const normalizedSlug = data.slug.trim().toLowerCase();
-    if (normalizedSlug !== collection.slug) {
-      const existing = await Collection.findOne({
-        slug: normalizedSlug,
-        _id: { $ne: id },
-      })
-        .select("_id")
-        .lean();
-
-      if (existing) {
-        throw new AppError("Collection slug already exists", 409);
-      }
-
-      collection.slug = normalizedSlug;
-    }
   }
 
   if (typeof data.category !== "undefined") {

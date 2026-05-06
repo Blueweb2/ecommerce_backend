@@ -10,7 +10,6 @@ const getParam = (param: string | string[]) =>
 
 const normalizeCollectionPayload = (raw: Record<string, any>) => ({
   title: raw.title,
-  slug: raw.slug,
   description: raw.description,
   category: raw.category,
   image: raw.image ?? raw.bannerImage,

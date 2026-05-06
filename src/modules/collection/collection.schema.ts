@@ -2,7 +2,6 @@ import { z } from "zod";
 
 export const createCollectionSchema = z.object({
   title: z.string().trim().min(1),
-  slug: z.string().trim().min(1),
   description: z.string().trim().optional(),
   category: z.string().trim().min(1),
   image: z

@@ -2,7 +2,6 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export interface ICollection extends Document {
   title: string;
-  slug: string;
   description?: string;
 
   // 🔥 IMPORTANT: direct category relation
@@ -31,14 +30,6 @@ const collectionSchema = new Schema<ICollection>(
     title: {
       type: String,
       required: true,
-      trim: true,
-    },
-
-    slug: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
       trim: true,
     },
 
