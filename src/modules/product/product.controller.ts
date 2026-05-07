@@ -232,8 +232,17 @@ export const getProductBySlugHandler = asyncHandler(
 export const updateProductHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const id = getParam(req.params.id);
+    const raw = req.body;
 
-    const product = await productService.updateProduct(id, req.body);
+    const parsedBody = {
+      ...raw,
+      customizable:
+        typeof raw.customizable === "string"
+          ? JSON.parse(raw.customizable)
+          : raw.customizable,
+    };
+
+    const product = await productService.updateProduct(id, parsedBody);
 
     if (!product) {
       throw new AppError("Product not found", 404);

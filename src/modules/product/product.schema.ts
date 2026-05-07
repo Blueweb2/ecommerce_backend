@@ -74,6 +74,11 @@ export const createProductSchema = z
 
     price: z.coerce.number().positive(),
 
+    isFabric: z.coerce.boolean().optional().default(false),
+    unit: z.string().optional().default("piece"),
+    minOrderQty: z.coerce.number().positive().optional().default(1),
+    stepQty: z.coerce.number().positive().optional().default(1),
+
     category: z.string().min(1),
 
     sections: z
@@ -191,6 +196,11 @@ export const updateProductSchema = z.object({
     .array(z.string().min(1))
     .optional(),
 
+  isFabric: z.boolean().optional(),
+  unit: z.string().optional(),
+  minOrderQty: z.number().positive().optional(),
+  stepQty: z.number().positive().optional(),
+
   category: z.string().min(1, "Category is required").optional(),
   sections: z.array(
     z.enum(PRODUCT_SECTION_VALUES)
@@ -220,6 +230,13 @@ export const updateProductSchema = z.object({
     .optional(),
 
   variants: z.array(productVariantSchema).optional(),
+
+  customizable: z
+    .object({
+      isCustomizable: z.boolean().default(false),
+      fields: z.array(customFieldSchema).optional(),
+    })
+    .optional(),
 
   isPublished: z.boolean().optional(),
   isOnSale: z.boolean().optional(),

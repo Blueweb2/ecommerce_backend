@@ -43,6 +43,11 @@ export interface IProduct extends Document {
   price: number;
   discountPrice?: number;
 
+  isFabric: boolean;
+  unit: string;
+  minOrderQty: number;
+  stepQty: number;
+
   isOnSale: boolean; // ✅ ADD THIS
 
   category: mongoose.Types.ObjectId;
@@ -201,6 +206,26 @@ const productSchema = new Schema<IProduct>(
       type: Number,
       min: 0,
     },
+
+    isFabric: {
+      type: Boolean,
+      default: false,
+    },
+    unit: {
+      type: String,
+      default: "piece",
+    },
+    minOrderQty: {
+      type: Number,
+      default: 1,
+      min: 0.1,
+    },
+    stepQty: {
+      type: Number,
+      default: 1,
+      min: 0.1,
+    },
+
     isOnSale: {
       type: Boolean,
       default: false,

@@ -501,6 +501,38 @@ export const updateProduct = async (
     );
   }
 
+  // ✅ VALIDATE CUSTOMIZATION
+  if (data.customizable?.isCustomizable) {
+    if (!data.customizable.fields || data.customizable.fields.length === 0) {
+      throw new AppError("Custom fields required", 400);
+    }
+
+    const seenFields = new Set();
+
+    for (const field of data.customizable.fields) {
+      const name = field.name.trim().toLowerCase();
+
+      if (seenFields.has(name)) {
+        throw new AppError(`Duplicate custom field: ${name}`, 400);
+      }
+
+      seenFields.add(name);
+
+      // ✅ normalize
+      field.name = name;
+
+      // ✅ validate select type
+      if (field.type === "select") {
+        if (!field.options || field.options.length === 0) {
+          throw new AppError(
+            `Options required for select field: ${field.name}`,
+            400
+          );
+        }
+      }
+    }
+  }
+
   return await Product.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
