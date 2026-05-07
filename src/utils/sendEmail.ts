@@ -1,41 +1,27 @@
-import nodemailer from "nodemailer";
-import SMTPTransport from "nodemailer/lib/smtp-transport";
+import { Resend } from "resend";
 import { env } from "../config/env";
+
+const resend = new Resend(env.RESEND_API_KEY);
 
 export const sendEmail = async (
   to: string,
   subject: string,
   html: string
 ) => {
-  const config: SMTPTransport.Options = {
-    host: "smtp.gmail.com",
+  try {
+    const response = await resend.emails.send({
+      from: "Fazzmi <onboarding@resend.dev>",
 
-    port: 587,
+      to,
 
-    secure: false,
+      subject,
 
-    auth: {
-      user: env.EMAIL_USER,
-      pass: env.EMAIL_PASS,
-    },
+      html,
+    });
 
-    tls: {
-      rejectUnauthorized: false,
-    },
-
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-  };
-
-  const transporter = nodemailer.createTransport(config);
-
-  await transporter.verify();
-
-  await transporter.sendMail({
-    from: `"Fazzmi" <${env.EMAIL_USER}>`,
-    to,
-    subject,
-    html,
-  });
+    console.log("Email sent:", response);
+  } catch (error) {
+    console.error("Resend error:", error);
+    throw error;
+  }
 };

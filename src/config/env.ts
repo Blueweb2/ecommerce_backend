@@ -30,4 +30,7 @@ export const env = {
 
   EMAIL_USER: process.env.EMAIL_USER || "",
   EMAIL_PASS: process.env.EMAIL_PASS || "",
+
+   RESEND_API_KEY:
+    process.env.RESEND_API_KEY || "",
 };
