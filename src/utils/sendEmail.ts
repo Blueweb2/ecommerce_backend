@@ -8,10 +8,13 @@ export const sendEmail = async (
   subject: string,
   html: string
 ) => {
-  await resend.emails.send({
-    from: "Fazzmi <onboarding@resend.dev>",
-    to,
-    subject,
-    html,
-  });
+ await resend.emails.send({
+  from: "Zenfaz <onboarding@resend.dev>",
+
+  to: "info@blueweb2.com",
+
+  subject,
+
+  html,
+});
 };
