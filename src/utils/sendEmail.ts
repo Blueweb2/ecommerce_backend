@@ -8,20 +8,10 @@ export const sendEmail = async (
   subject: string,
   html: string
 ) => {
-  try {
-    const response = await resend.emails.send({
-      from: "Fazzmi <onboarding@resend.dev>",
-
-      to,
-
-      subject,
-
-      html,
-    });
-
-    console.log("Email sent:", response);
-  } catch (error) {
-    console.error("Resend error:", error);
-    throw error;
-  }
+  await resend.emails.send({
+    from: "Fazzmi <onboarding@resend.dev>",
+    to,
+    subject,
+    html,
+  });
 };
