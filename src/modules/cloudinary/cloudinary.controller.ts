@@ -1,41 +1,77 @@
 import { Request, Response } from "express";
-import crypto from "crypto";
-import { deleteImageFromCloudinary } from "./cloudinary.service";
+
+import cloudinary from "../../config/cloudinary";
+import { env } from "../../config/env";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { AppError } from "../../utils/AppError";
+import { deleteImageFromCloudinary } from "./cloudinary.service";
 
-export const getSignature = (req: Request, res: Response) => {
-  const timestamp = Math.round(Date.now() / 1000);
+const ALLOWED_SIGNATURE_FOLDERS = new Set(["ecommerce/designers"]);
 
-  const folder = req.query.folder || "products"; // ✅ dynamic
+const getQueryString = (value: unknown): string | undefined => {
+  if (typeof value === "string") {
+    return value;
+  }
 
-  const paramsToSign = `folder=${folder}&timestamp=${timestamp}${process.env.CLOUD_API_SECRET}`;
+  if (Array.isArray(value)) {
+    return value[0];
+  }
 
-  const signature = crypto
-    .createHash("sha1")
-    .update(paramsToSign)
-    .digest("hex");
-
-  res.json({
-    timestamp,
-    signature,
-    cloudName: process.env.CLOUD_NAME,
-    apiKey: process.env.CLOUD_API_KEY,
-    folder, // optional but useful
-  });
+  return undefined;
 };
 
+export const getSignature = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (
+      !env.CLOUDINARY_CLOUD_NAME ||
+      !env.CLOUDINARY_API_KEY ||
+      !env.CLOUDINARY_API_SECRET
+    ) {
+      throw new AppError("Cloudinary is not configured", 500);
+    }
 
+    const folder = getQueryString(req.query.folder)?.trim();
+
+    if (!folder) {
+      throw new AppError("Folder is required", 400);
+    }
+
+    if (!ALLOWED_SIGNATURE_FOLDERS.has(folder)) {
+      throw new AppError("Invalid folder", 400);
+    }
+
+    const timestamp = Math.round(Date.now() / 1000);
+
+    const signature = cloudinary.utils.api_sign_request(
+      {
+        folder,
+        timestamp,
+      },
+      env.CLOUDINARY_API_SECRET
+    );
+
+    return res.status(200).json({
+      timestamp,
+      signature,
+      cloudName: env.CLOUDINARY_CLOUD_NAME,
+      apiKey: env.CLOUDINARY_API_KEY,
+    });
+  }
+);
 
 export const deleteImageHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { public_id } = req.body;
 
     if (!public_id) {
-      return res.status(400).json({ message: "public_id is required" });
+      throw new AppError("public_id is required", 400);
     }
 
     await deleteImageFromCloudinary(public_id);
 
-    res.json({ message: "Image deleted successfully" });
+    return res.status(200).json({
+      success: true,
+      message: "Image deleted successfully",
+    });
   }
 );
