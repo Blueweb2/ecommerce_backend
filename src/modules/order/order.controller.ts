@@ -203,6 +203,23 @@ export const verifyPaymentHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { razorpayOrderId, paymentId, signature, orderId } = req.body;
 
+    // 1. Verify order exists
+    const order = await orderService.getOrderById(orderId);
+    if (!order) {
+      throw new AppError("Order not found", 404);
+    }
+
+    // 2. Verify payment not already captured
+    if (order.isPaid) {
+      return sendResponse(res, 200, "Payment already verified", order);
+    }
+
+    // 3. Verify razorpay order ID matches
+    if (order.razorpayOrderId !== razorpayOrderId) {
+      throw new AppError("Invalid Razorpay Order ID", 400);
+    }
+
+    // 4. Verify signature
     const isValid = verifyPayment(
       razorpayOrderId,
       paymentId,
@@ -214,12 +231,13 @@ export const verifyPaymentHandler = asyncHandler(
       throw new AppError("Payment verification failed", 400);
     }
 
-    const order = await orderService.markOrderPaid(
+    // 4. Mark as paid
+    const updatedOrder = await orderService.markOrderPaid(
       orderId,
       paymentId,
       signature
     );
 
-    sendResponse(res, 200, "Payment verified successfully", order);
+    sendResponse(res, 200, "Payment verified successfully", updatedOrder);
   }
 );

@@ -7,6 +7,7 @@ export interface CreateOrderDTO {
     country: string;
   };
   paymentMethod: "cod" | "razorpay";
+  shippingCharge: number; // ✅ ADD THIS
   notes?: string;
 }
 

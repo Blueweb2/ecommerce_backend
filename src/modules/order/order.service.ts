@@ -203,7 +203,8 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
           items: orderItems,
           totalPrice: cart.totalPrice,
           totalGstAmount: cart.totalGstAmount,
-          grandTotal: cart.totalPrice + cart.totalGstAmount,
+          shippingCharge: data.shippingCharge, // ✅ Added
+          grandTotal: cart.totalPrice + cart.totalGstAmount + data.shippingCharge, // ✅ Added
           totalQuantity: cart.totalQuantity,
           shippingAddress: data.shippingAddress,
           paymentMethod: data.paymentMethod,
@@ -252,7 +253,7 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       }
 
       const razorpayOrder = await razorpay.orders.create({
-        amount: Math.round((cart.totalPrice + cart.totalGstAmount) * 100),
+        amount: Math.round((cart.totalPrice + cart.totalGstAmount + data.shippingCharge) * 100),
         currency: "INR",
       });
 

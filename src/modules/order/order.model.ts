@@ -19,6 +19,7 @@ export interface IOrder extends Document {
 
   totalPrice: number;
   totalGstAmount: number;
+  shippingCharge: number; // 🔥 ADD THIS
   grandTotal: number;
   totalQuantity: number;
 
@@ -127,6 +128,12 @@ const orderSchema = new Schema<IOrder>(
     },
 
     totalGstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    shippingCharge: {
       type: Number,
       default: 0,
       min: 0,
