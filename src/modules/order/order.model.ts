@@ -20,6 +20,11 @@ export interface IOrder extends Document {
   totalPrice: number;
   totalGstAmount: number;
   shippingCharge: number; // 🔥 ADD THIS
+  promoCode?: {
+    code: string;
+    promoId: mongoose.Types.ObjectId;
+  };
+  discountAmount: number;
   grandTotal: number;
   totalQuantity: number;
 
@@ -134,6 +139,18 @@ const orderSchema = new Schema<IOrder>(
     },
 
     shippingCharge: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    promoCode: {
+      code: String,
+      promoId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "PromoCode",
+      },
+    },
+    discountAmount: {
       type: Number,
       default: 0,
       min: 0,

@@ -4,6 +4,7 @@ import {Product} from "../product/product.model";
 import { CreateOrderDTO } from "./order.types";
 import { AppError } from "../../utils/AppError";
 import { User } from "../user/user.model";
+import * as promoService from "../promo/promo.service";
 
 import Razorpay from "razorpay";
 import { env } from "../../config/env";
@@ -195,6 +196,19 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       selectedOptions: item.selectedOptions,
     }));
 
+    // ✅ Apply Promo Code
+    let discountAmount = 0;
+    let promoData: any = undefined;
+
+    if (data.promoCode) {
+      const result = await promoService.validatePromoCode(data.promoCode, cart.totalPrice);
+      discountAmount = result.discountAmount;
+      promoData = {
+        code: result.code,
+        promoId: result.promoId,
+      };
+    }
+
     // 🔥 CREATE ORDER
     const order = await Order.create(
       [
@@ -204,7 +218,9 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
           totalPrice: cart.totalPrice,
           totalGstAmount: cart.totalGstAmount,
           shippingCharge: data.shippingCharge, // ✅ Added
-          grandTotal: cart.totalPrice + cart.totalGstAmount + data.shippingCharge, // ✅ Added
+          promoCode: promoData, // ✅ Added
+          discountAmount: discountAmount, // ✅ Added
+          grandTotal: Math.max(0, cart.totalPrice + cart.totalGstAmount + data.shippingCharge - discountAmount), // ✅ Updated
           totalQuantity: cart.totalQuantity,
           shippingAddress: data.shippingAddress,
           paymentMethod: data.paymentMethod,
@@ -240,6 +256,10 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       createdOrder.isPaid = true;
       createdOrder.paymentStatus = "success";
       createdOrder.paidAt = new Date();
+
+      if (createdOrder.promoCode) {
+        await promoService.incrementPromoUsage(createdOrder.promoCode.promoId.toString());
+      }
 
       await createdOrder.save({ session });
     }
@@ -306,6 +326,10 @@ export const markOrderPaid = async (
   order.paymentStatus = "success";
 
   await order.save();
+
+  if (order.promoCode) {
+    await promoService.incrementPromoUsage(order.promoCode.promoId.toString());
+  }
 
   // reduce stock
   for (const item of order.items) {

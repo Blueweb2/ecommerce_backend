@@ -15,6 +15,7 @@ export const createOrderSchema = z
     shippingAddress: shippingAddressSchema,
     paymentMethod: z.enum(["cod", "razorpay"]),
     shippingCharge: z.number().min(0),
+    promoCode: z.string().optional(),
     notes: z.string().max(500).optional(),
   })
   .strict();

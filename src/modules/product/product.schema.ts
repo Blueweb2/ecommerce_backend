@@ -80,6 +80,7 @@ export const createProductSchema = z
     stepQty: z.coerce.number().positive().optional().default(1),
 
     category: z.string().min(1),
+    designer: z.string().optional(), // ✅ Added
 
     sections: z
       .array(z.enum(PRODUCT_SECTION_VALUES))
@@ -202,6 +203,7 @@ export const updateProductSchema = z.object({
   stepQty: z.number().positive().optional(),
 
   category: z.string().min(1, "Category is required").optional(),
+  designer: z.string().optional(), // ✅ Added
   sections: z.array(
     z.enum(PRODUCT_SECTION_VALUES)
   ).optional(),

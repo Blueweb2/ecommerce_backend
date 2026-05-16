@@ -115,6 +115,7 @@ export const getSaleProductsService = async ({
   const [products, total] = await Promise.all([
     Product.find(filter)
       .populate("category") // ✅ POPULATE FOR CONSISTENCY
+      .populate("designer") // ✅ Added
       .sort(sortOption)
       .skip(skip)
       .limit(limit)
@@ -536,7 +537,7 @@ export const updateProduct = async (
   return await Product.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
-  }).populate("category");
+  }).populate("category").populate("designer");
 };
 
 
@@ -568,6 +569,7 @@ export const getAllProducts = async (
   const [products, total] = await Promise.all([
     Product.find(query)
       .populate("category")
+      .populate("designer")
       .sort(sortOption)
       .skip(skip)
       .limit(limit),
@@ -586,11 +588,11 @@ export const getAllProducts = async (
 };
 
 export const getProductById = async (id: string) => {
-  return await Product.findById(id).populate("category");
+  return await Product.findById(id).populate("category").populate("designer");
 };
 
 export const getProductBySlug = async (slug: string) => {
-  return await Product.findOne({ slug }).populate("category");
+  return await Product.findOne({ slug }).populate("category").populate("designer");
 };
 
 export const deleteProduct = async (id: string) => {

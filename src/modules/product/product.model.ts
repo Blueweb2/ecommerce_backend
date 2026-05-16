@@ -51,6 +51,7 @@ export interface IProduct extends Document {
   isOnSale: boolean; // ✅ ADD THIS
 
   category: mongoose.Types.ObjectId;
+  designer?: mongoose.Types.ObjectId; // ✅ ADD THIS
   sections: string[];
   brand?: string;
   stock: number;
@@ -235,6 +236,12 @@ const productSchema = new Schema<IProduct>(
       type: Schema.Types.ObjectId,
       ref: "Category",
       required: true,
+      index: true,
+    },
+    designer: {
+      type: Schema.Types.ObjectId,
+      ref: "Designer",
+      required: false,
       index: true,
     },
     sections: [

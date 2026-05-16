@@ -8,6 +8,7 @@ export interface CreateOrderDTO {
   };
   paymentMethod: "cod" | "razorpay";
   shippingCharge: number; // ✅ ADD THIS
+  promoCode?: string; // ✅ ADD THIS
   notes?: string;
 }
 
