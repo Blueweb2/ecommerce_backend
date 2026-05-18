@@ -144,7 +144,7 @@ export const getNewProductsService = async ({
     isPublished: true,
     sections: "new-in",
   })
-    .select("_id name slug price discountPrice images brand")
+    .select("_id name slug price discountPrice images brand description")
     .sort({ createdAt: -1 })
     .limit(normalizedLimit)
     .lean();

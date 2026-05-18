@@ -257,7 +257,7 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       createdOrder.paymentStatus = "success";
       createdOrder.paidAt = new Date();
 
-      if (createdOrder.promoCode) {
+      if (createdOrder.promoCode && createdOrder.promoCode.promoId) {
         await promoService.incrementPromoUsage(createdOrder.promoCode.promoId.toString());
       }
 
@@ -327,7 +327,7 @@ export const markOrderPaid = async (
 
   await order.save();
 
-  if (order.promoCode) {
+  if (order.promoCode && order.promoCode.promoId) {
     await promoService.incrementPromoUsage(order.promoCode.promoId.toString());
   }
 
