@@ -54,13 +54,17 @@ export const registerHandler = asyncHandler(async (req: Request, res: Response) 
     role: "user",
     isActive: true,
     emailVerified: false,
+    phoneVerified: false,
   });
 
-  // 🔥 Generate OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // 🔥 Generate OTPs
+  const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  newUser.verificationCode = otp;
+  newUser.verificationCode = emailOtp;
   newUser.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+  newUser.phoneVerificationCode = phoneOtp;
+  newUser.phoneVerificationExpires = new Date(Date.now() + 10 * 60 * 1000);
 
   await newUser.save();
 
@@ -72,11 +76,14 @@ export const registerHandler = asyncHandler(async (req: Request, res: Response) 
       <div style="font-family: Arial, sans-serif;">
         <h2>Email Verification</h2>
         <p>Your OTP code is:</p>
-        <h1 style="letter-spacing: 4px;">${otp}</h1>
+        <h1 style="letter-spacing: 4px;">${emailOtp}</h1>
         <p>This OTP will expire in 10 minutes.</p>
       </div>
     `
   );
+
+  // 📱 Simulate SMS sending in console
+  console.log(`\n📱 [SIMULATED SMS] Sent Phone Verification OTP to ${newUser.phone || "user"}: ${phoneOtp}\n`);
 
   // ✅ Response (NO TOKEN HERE)
   return res.status(201).json({
@@ -110,7 +117,53 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
     throw new AppError("Invalid credentials", 400);
   }
 
-  // 🔥 Generate OTP
+  // 🚨 If email not verified:
+  if (!user.emailVerified) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationCode = otp;
+    user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    await sendEmail(
+      user.email,
+      "Verify Your Email - OTP",
+      `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Email Verification</h2>
+          <p>Your OTP code is:</p>
+          <h1 style="letter-spacing: 4px;">${otp}</h1>
+          <p>This OTP will expire in 10 minutes.</p>
+        </div>
+      `
+    );
+
+    return res.json({
+      success: true,
+      emailVerified: false,
+      phoneVerified: false,
+      message: "Email verification required. OTP sent to your email.",
+    });
+  }
+
+  // 🚨 If phone exists but not verified:
+  if (user.phone && !user.phoneVerified) {
+    const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.phoneVerificationCode = phoneOtp;
+    user.phoneVerificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    // Simulate SMS
+    console.log(`\n📱 [SIMULATED SMS] Sent Phone Verification OTP to ${user.phone}: ${phoneOtp}\n`);
+
+    return res.json({
+      success: true,
+      emailVerified: true,
+      phoneVerified: false,
+      message: "Mobile number verification required. OTP sent to your phone.",
+    });
+  }
+
+  // 🔥 Generate OTP for standard fully verified login
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   user.verificationCode = otp;
@@ -171,6 +224,18 @@ export const verifyOtpHandler = asyncHandler(
     user.verificationCode = undefined;
     user.verificationExpires = undefined;
 
+    await user.save();
+
+    // 🚨 Sequential Phone Verification Check
+    if (user.phone && !user.phoneVerified) {
+      return res.json({
+        success: true,
+        emailVerified: true,
+        phoneVerified: false,
+        message: "Email verified. Please verify your mobile number.",
+      });
+    }
+
     // 🔐 Generate tokens
     const payload = { id: user._id, role: user.role };
 
@@ -193,6 +258,7 @@ export const verifyOtpHandler = asyncHandler(
       name: user.name,
       email: user.email,
       role: user.role,
+      phone: user.phone,
     };
 
     return res.json({
@@ -200,6 +266,8 @@ export const verifyOtpHandler = asyncHandler(
       message: "Account verified successfully",
       accessToken,
       user: safeUser,
+      emailVerified: true,
+      phoneVerified: true,
     });
   }
 );
@@ -247,6 +315,105 @@ export const resendOtpHandler = asyncHandler(
     return res.json({
       success: true,
       message: "OTP resent successfully",
+    });
+  }
+);
+
+export const verifyPhoneOtpHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email, otp } = req.body;
+
+    const emailNormalized = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: emailNormalized });
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (!user.isActive) {
+      throw new AppError("Account is deactivated", 403);
+    }
+
+    // Check Phone OTP
+    if (
+      String(user.phoneVerificationCode) !== String(otp) ||
+      !user.phoneVerificationExpires ||
+      user.phoneVerificationExpires < new Date()
+    ) {
+      throw new AppError("Invalid or expired OTP", 400);
+    }
+
+    // Mark verified
+    user.phoneVerified = true;
+    user.phoneVerificationCode = null;
+    user.phoneVerificationExpires = null;
+
+    // 🔐 Generate tokens
+    const payload = { id: user._id, role: user.role };
+
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    user.refreshToken = refreshToken;
+
+    await user.save();
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    const safeUser = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+    };
+
+    return res.json({
+      success: true,
+      message: "Mobile number verified successfully",
+      accessToken,
+      user: safeUser,
+      emailVerified: user.emailVerified,
+      phoneVerified: true,
+    });
+  }
+);
+
+export const resendPhoneOtpHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    const emailNormalized = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: emailNormalized });
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (!user.isActive) {
+      throw new AppError("Account is deactivated", 403);
+    }
+
+    // Generate new Phone OTP
+    const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.phoneVerificationCode = phoneOtp;
+    user.phoneVerificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    await user.save();
+
+    // Simulate SMS sending in console
+    console.log(`\n📱 [SIMULATED SMS] Resent Phone Verification OTP to ${user.phone || "user"}: ${phoneOtp}\n`);
+
+    return res.json({
+      success: true,
+      message: "Phone OTP resent successfully",
     });
   }
 );

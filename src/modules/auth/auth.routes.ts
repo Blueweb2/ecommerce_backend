@@ -17,6 +17,8 @@ import {
   changePasswordHandler,
   requestEmailChangeHandler,
   verifyEmailChangeHandler,
+  verifyPhoneOtpHandler,
+  resendPhoneOtpHandler,
 
 } from "./auth.controller";
 import { protect, restrictTo } from "../../middlewares/auth";
@@ -31,6 +33,8 @@ router.post("/logout", logoutHandler);
 router.get("/me", protect, getMeHandler);
 router.post("/verify-otp", verifyOtpHandler);
 router.post("/resend-otp", resendOtpHandler);
+router.post("/verify-phone-otp", verifyPhoneOtpHandler);
+router.post("/resend-phone-otp", resendPhoneOtpHandler);
 router.patch("/update-profile", protect, updateProfileHandler);
 router.patch("/change-password", protect, changePasswordHandler);
 router.post("/request-email-change", protect, requestEmailChangeHandler);
