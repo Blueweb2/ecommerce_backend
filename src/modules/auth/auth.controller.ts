@@ -8,6 +8,7 @@ import {
 import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { User } from "../user/user.model";
+import { PendingUser } from "../user/pendingUser.model";
 import { sendEmail } from "../../utils/sendEmail";
 
 // ✅ GET ME
@@ -36,8 +37,10 @@ export const getMeHandler = asyncHandler(async (req: Request, res: Response) => 
 export const registerHandler = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, password, phone } = req.body;
 
-  // 🔍 Check existing user
-  const existingUser = await User.findOne({ email });
+  const emailNormalized = email.trim().toLowerCase();
+
+  // 🔍 Check existing user in main table
+  const existingUser = await User.findOne({ email: emailNormalized });
   if (existingUser) {
     throw new AppError("Email already in use", 400);
   }
@@ -45,32 +48,30 @@ export const registerHandler = asyncHandler(async (req: Request, res: Response) 
   // 🔐 Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // 👤 Create user
-  const newUser = await User.create({
-    name,
-    email,
-    password: hashedPassword,
-    phone,
-    role: "user",
-    isActive: true,
-    emailVerified: false,
-    phoneVerified: false,
-  });
+  // 🧹 Delete any existing pending registrations for this email
+  await PendingUser.deleteMany({ email: emailNormalized });
 
   // 🔥 Generate OTPs
   const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
   const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  newUser.verificationCode = emailOtp;
-  newUser.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
-  newUser.phoneVerificationCode = phoneOtp;
-  newUser.phoneVerificationExpires = new Date(Date.now() + 10 * 60 * 1000);
-
-  await newUser.save();
+  // 👤 Create pending user record (will expire in 15 mins)
+  await PendingUser.create({
+    name,
+    email: emailNormalized,
+    password: hashedPassword,
+    phone,
+    emailOtp,
+    emailOtpExpires: new Date(Date.now() + 10 * 60 * 1000),
+    phoneOtp,
+    phoneOtpExpires: new Date(Date.now() + 10 * 60 * 1000),
+    emailVerified: false,
+    phoneVerified: false,
+  });
 
   // 📧 Send OTP Email
   await sendEmail(
-    newUser.email,
+    emailNormalized,
     "Verify Your Email - OTP",
     `
       <div style="font-family: Arial, sans-serif;">
@@ -83,7 +84,7 @@ export const registerHandler = asyncHandler(async (req: Request, res: Response) 
   );
 
   // 📱 Simulate SMS sending in console
-  console.log(`\n📱 [SIMULATED SMS] Sent Phone Verification OTP to ${newUser.phone || "user"}: ${phoneOtp}\n`);
+  console.log(`\n📱 [SIMULATED SMS] Sent Phone Verification OTP to ${phone || "user"}: ${phoneOtp}\n`);
 
   // ✅ Response (NO TOKEN HERE)
   return res.status(201).json({
@@ -99,9 +100,48 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
   // 🔤 Normalize email
   const emailNormalized = email.trim().toLowerCase();
 
+  // 🔍 Find in main table
   const user = await User.findOne({ email: emailNormalized }).select("+password");
 
-  if (!user || !user.password) {
+  if (!user) {
+    // 🔍 Check if registration is pending
+    const pendingUser = await PendingUser.findOne({ email: emailNormalized });
+    if (pendingUser) {
+      // Trigger new OTP codes
+      const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      pendingUser.emailOtp = emailOtp;
+      pendingUser.emailOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+      pendingUser.phoneOtp = phoneOtp;
+      pendingUser.phoneOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+      await pendingUser.save();
+
+      // Dispatch
+      await sendEmail(
+        emailNormalized,
+        "Verify Your Email - OTP",
+        `
+          <div style="font-family: Arial, sans-serif;">
+            <h2>Email Verification</h2>
+            <p>Your OTP code is:</p>
+            <h1 style="letter-spacing: 4px;">${emailOtp}</h1>
+            <p>This OTP will expire in 10 minutes.</p>
+          </div>
+        `
+      );
+
+      console.log(`\n📱 [SIMULATED SMS] Sent Phone Verification OTP to ${pendingUser.phone || "user"}: ${phoneOtp}\n`);
+
+      return res.json({
+        success: true,
+        emailVerified: pendingUser.emailVerified,
+        phoneVerified: pendingUser.phoneVerified,
+        message: "Registration pending. OTP sent to complete registration.",
+        redirectVerify: true,
+      });
+    }
+
     throw new AppError("Invalid credentials", 400);
   }
 
@@ -117,7 +157,7 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
     throw new AppError("Invalid credentials", 400);
   }
 
-  // 🚨 If email not verified:
+  // 🚨 If email not verified (Safety check for legacy profiles):
   if (!user.emailVerified) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.verificationCode = otp;
@@ -145,7 +185,7 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
     });
   }
 
-  // 🚨 If phone exists but not verified:
+  // 🚨 If phone exists but not verified (Safety check for legacy profiles):
   if (user.phone && !user.phoneVerified) {
     const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
     user.phoneVerificationCode = phoneOtp;
@@ -194,40 +234,80 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
   });
 });
 
+// ✅ VERIFY OTP
 export const verifyOtpHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { email, otp } = req.body;
 
     const emailNormalized = email.trim().toLowerCase();
 
-    const user = await User.findOne({ email: emailNormalized });
+    // 🔍 Check if user is already verified and fully registered in the main table
+    const existingUser = await User.findOne({ email: emailNormalized });
+    if (existingUser) {
+      if (
+        String(existingUser.verificationCode) !== String(otp) ||
+        !existingUser.verificationExpires ||
+        existingUser.verificationExpires < new Date()
+      ) {
+        throw new AppError("Invalid or expired OTP", 400);
+      }
 
-    if (!user) {
-      throw new AppError("User not found", 404);
+      existingUser.emailVerified = true;
+      existingUser.verificationCode = undefined;
+      existingUser.verificationExpires = undefined;
+      await existingUser.save();
+
+      const payload = { id: existingUser._id, role: existingUser.role };
+      const accessToken = signAccessToken(payload);
+      const refreshToken = signRefreshToken(payload);
+
+      existingUser.refreshToken = refreshToken;
+      await existingUser.save();
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+
+      return res.json({
+        success: true,
+        message: "Account verified successfully",
+        accessToken,
+        user: {
+          id: existingUser._id,
+          name: existingUser.name,
+          email: existingUser.email,
+          role: existingUser.role,
+          phone: existingUser.phone,
+        },
+        emailVerified: true,
+        phoneVerified: true,
+      });
     }
 
-    if (!user.isActive) {
-      throw new AppError("Account is deactivated", 403);
+    // 🔍 Otherwise, find matching PendingUser record
+    const pendingUser = await PendingUser.findOne({ email: emailNormalized });
+
+    if (!pendingUser) {
+      throw new AppError("Registration session expired. Please register again.", 404);
     }
 
-    // 🔥 FIXED OTP CHECK
+    // Validate OTP
     if (
-      String(user.verificationCode) !== String(otp) ||
-      !user.verificationExpires ||
-      user.verificationExpires < new Date()
+      String(pendingUser.emailOtp) !== String(otp) ||
+      !pendingUser.emailOtpExpires ||
+      pendingUser.emailOtpExpires < new Date()
     ) {
       throw new AppError("Invalid or expired OTP", 400);
     }
 
-    // ✅ Mark verified
-    user.emailVerified = true;
-    user.verificationCode = undefined;
-    user.verificationExpires = undefined;
-
-    await user.save();
+    // Mark verified
+    pendingUser.emailVerified = true;
+    await pendingUser.save();
 
     // 🚨 Sequential Phone Verification Check
-    if (user.phone && !user.phoneVerified) {
+    if (pendingUser.phone && !pendingUser.phoneVerified) {
       return res.json({
         success: true,
         emailVerified: true,
@@ -236,15 +316,26 @@ export const verifyOtpHandler = asyncHandler(
       });
     }
 
-    // 🔐 Generate tokens
-    const payload = { id: user._id, role: user.role };
+    // Create User (both verified)
+    const newUser = await User.create({
+      name: pendingUser.name,
+      email: pendingUser.email,
+      password: pendingUser.password,
+      phone: pendingUser.phone,
+      role: "user",
+      isActive: true,
+      emailVerified: true,
+      phoneVerified: true,
+    });
 
+    await pendingUser.deleteOne();
+
+    const payload = { id: newUser._id, role: newUser.role };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 
-    user.refreshToken = refreshToken;
-
-    await user.save();
+    newUser.refreshToken = refreshToken;
+    await newUser.save();
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -252,55 +343,73 @@ export const verifyOtpHandler = asyncHandler(
       secure: process.env.NODE_ENV === "production",
     });
 
-    // ✅ SEND USER ALSO
-    const safeUser = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone,
-    };
-
     return res.json({
       success: true,
       message: "Account verified successfully",
       accessToken,
-      user: safeUser,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        phone: newUser.phone,
+      },
       emailVerified: true,
       phoneVerified: true,
     });
   }
 );
 
+// ✅ RESEND OTP
 export const resendOtpHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { email } = req.body;
 
-    // 🔤 Normalize email
     const emailNormalized = email.trim().toLowerCase();
 
+    // Check main User first
     const user = await User.findOne({ email: emailNormalized });
+    if (user) {
+      if (!user.isActive) {
+        throw new AppError("Account is deactivated", 403);
+      }
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      user.verificationCode = otp;
+      user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+      await user.save();
 
-    if (!user) {
-      throw new AppError("User not found", 404);
+      await sendEmail(
+        user.email,
+        "Resend OTP - Verification Code",
+        `
+          <div style="font-family: Arial, sans-serif;">
+            <h2>OTP Verification</h2>
+            <p>Your new OTP code is:</p>
+            <h1 style="letter-spacing: 4px;">${otp}</h1>
+            <p>This OTP will expire in 10 minutes.</p>
+          </div>
+        `
+      );
+
+      return res.json({
+        success: true,
+        message: "OTP resent successfully",
+      });
     }
 
-    // ❌ Check inactive user
-    if (!user.isActive) {
-      throw new AppError("Account is deactivated", 403);
+    // Check pending user
+    const pendingUser = await PendingUser.findOne({ email: emailNormalized });
+    if (!pendingUser) {
+      throw new AppError("Registration session expired. Please register again.", 404);
     }
 
-    // 🔥 Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    pendingUser.emailOtp = otp;
+    pendingUser.emailOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await pendingUser.save();
 
-    user.verificationCode = otp;
-    user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
-
-    await user.save();
-
-    // 📧 Send email
     await sendEmail(
-      user.email,
+      pendingUser.email,
       "Resend OTP - Verification Code",
       `
         <div style="font-family: Arial, sans-serif;">
@@ -319,45 +428,97 @@ export const resendOtpHandler = asyncHandler(
   }
 );
 
+// ✅ VERIFY PHONE OTP
 export const verifyPhoneOtpHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { email, otp } = req.body;
 
     const emailNormalized = email.trim().toLowerCase();
 
+    // Check if main User already exists (for cases where user already registered but logging in requires phone verification)
     const user = await User.findOne({ email: emailNormalized });
+    if (user) {
+      if (!user.isActive) {
+        throw new AppError("Account is deactivated", 403);
+      }
+      if (
+        String(user.phoneVerificationCode) !== String(otp) ||
+        !user.phoneVerificationExpires ||
+        user.phoneVerificationExpires < new Date()
+      ) {
+        throw new AppError("Invalid or expired OTP", 400);
+      }
 
-    if (!user) {
-      throw new AppError("User not found", 404);
+      user.phoneVerified = true;
+      user.phoneVerificationCode = null;
+      user.phoneVerificationExpires = null;
+
+      const payload = { id: user._id, role: user.role };
+      const accessToken = signAccessToken(payload);
+      const refreshToken = signRefreshToken(payload);
+
+      user.refreshToken = refreshToken;
+      await user.save();
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+
+      return res.json({
+        success: true,
+        message: "Mobile number verified successfully",
+        accessToken,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+        },
+        emailVerified: user.emailVerified,
+        phoneVerified: true,
+      });
     }
 
-    if (!user.isActive) {
-      throw new AppError("Account is deactivated", 403);
+    // Check PendingUser
+    const pendingUser = await PendingUser.findOne({ email: emailNormalized });
+    if (!pendingUser) {
+      throw new AppError("Registration session expired. Please register again.", 404);
     }
 
     // Check Phone OTP
     if (
-      String(user.phoneVerificationCode) !== String(otp) ||
-      !user.phoneVerificationExpires ||
-      user.phoneVerificationExpires < new Date()
+      String(pendingUser.phoneOtp) !== String(otp) ||
+      !pendingUser.phoneOtpExpires ||
+      pendingUser.phoneOtpExpires < new Date()
     ) {
       throw new AppError("Invalid or expired OTP", 400);
     }
 
-    // Mark verified
-    user.phoneVerified = true;
-    user.phoneVerificationCode = null;
-    user.phoneVerificationExpires = null;
+    // Mark verified & CREATE user in actual User collection!
+    const newUser = await User.create({
+      name: pendingUser.name,
+      email: pendingUser.email,
+      password: pendingUser.password, // already hashed
+      phone: pendingUser.phone,
+      role: "user",
+      isActive: true,
+      emailVerified: true,
+      phoneVerified: true,
+    });
+
+    await pendingUser.deleteOne();
 
     // 🔐 Generate tokens
-    const payload = { id: user._id, role: user.role };
+    const payload = { id: newUser._id, role: newUser.role };
 
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 
-    user.refreshToken = refreshToken;
-
-    await user.save();
+    newUser.refreshToken = refreshToken;
+    await newUser.save();
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -366,11 +527,11 @@ export const verifyPhoneOtpHandler = asyncHandler(
     });
 
     const safeUser = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone,
+      id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      phone: newUser.phone,
     };
 
     return res.json({
@@ -378,38 +539,50 @@ export const verifyPhoneOtpHandler = asyncHandler(
       message: "Mobile number verified successfully",
       accessToken,
       user: safeUser,
-      emailVerified: user.emailVerified,
+      emailVerified: true,
       phoneVerified: true,
     });
   }
 );
 
+// ✅ RESEND PHONE OTP
 export const resendPhoneOtpHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { email } = req.body;
 
     const emailNormalized = email.trim().toLowerCase();
 
+    // Check main User
     const user = await User.findOne({ email: emailNormalized });
+    if (user) {
+      if (!user.isActive) {
+        throw new AppError("Account is deactivated", 403);
+      }
+      const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      user.phoneVerificationCode = phoneOtp;
+      user.phoneVerificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+      await user.save();
 
-    if (!user) {
-      throw new AppError("User not found", 404);
+      console.log(`\n📱 [SIMULATED SMS] Resent Phone Verification OTP to ${user.phone || "user"}: ${phoneOtp}\n`);
+
+      return res.json({
+        success: true,
+        message: "Phone OTP resent successfully",
+      });
     }
 
-    if (!user.isActive) {
-      throw new AppError("Account is deactivated", 403);
+    // Check pending user
+    const pendingUser = await PendingUser.findOne({ email: emailNormalized });
+    if (!pendingUser) {
+      throw new AppError("Registration session expired. Please register again.", 404);
     }
 
-    // Generate new Phone OTP
     const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    pendingUser.phoneOtp = phoneOtp;
+    pendingUser.phoneOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await pendingUser.save();
 
-    user.phoneVerificationCode = phoneOtp;
-    user.phoneVerificationExpires = new Date(Date.now() + 10 * 60 * 1000);
-
-    await user.save();
-
-    // Simulate SMS sending in console
-    console.log(`\n📱 [SIMULATED SMS] Resent Phone Verification OTP to ${user.phone || "user"}: ${phoneOtp}\n`);
+    console.log(`\n📱 [SIMULATED SMS] Resent Phone Verification OTP to ${pendingUser.phone || "user"}: ${phoneOtp}\n`);
 
     return res.json({
       success: true,
