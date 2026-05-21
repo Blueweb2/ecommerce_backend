@@ -19,7 +19,8 @@ import {
   verifyEmailChangeHandler,
   verifyPhoneOtpHandler,
   resendPhoneOtpHandler,
-
+  forgotPasswordHandler,
+  resetPasswordHandler,
 } from "./auth.controller";
 import { protect, restrictTo } from "../../middlewares/auth";
 
@@ -39,6 +40,8 @@ router.patch("/update-profile", protect, updateProfileHandler);
 router.patch("/change-password", protect, changePasswordHandler);
 router.post("/request-email-change", protect, requestEmailChangeHandler);
 router.post("/verify-email-change", protect, verifyEmailChangeHandler);
+router.post("/forgot-password", forgotPasswordHandler);
+router.post("/reset-password", resetPasswordHandler);
 
 
 // Customer Management (Admin + Superadmin)

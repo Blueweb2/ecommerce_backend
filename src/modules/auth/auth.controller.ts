@@ -10,6 +10,8 @@ import { AppError } from "../../utils/AppError";
 import { User } from "../user/user.model";
 import { PendingUser } from "../user/pendingUser.model";
 import { sendEmail } from "../../utils/sendEmail";
+import crypto from "crypto";
+import {CLIENT_URL} from "../../config/env";
 
 // ✅ GET ME
 export const getMeHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -913,4 +915,100 @@ export const verifyEmailChangeHandler = asyncHandler(async (req: Request, res: R
   };
 
   res.json({ success: true, message: "Email updated successfully", user: safeUser });
+});
+
+// ✅ FORGOT PASSWORD
+export const forgotPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new AppError("Email is required", 400);
+  }
+
+  const emailNormalized = email.trim().toLowerCase();
+  const user = await User.findOne({ email: emailNormalized });
+
+  // For security, don't reveal if user doesn't exist, just say success
+  if (!user) {
+    res.json({
+      success: true,
+      message: "If an account exists with this email, a reset link has been sent.",
+    });
+    return;
+  }
+
+  // Generate a random 32-character reset token
+  const resetToken = crypto.randomBytes(16).toString("hex");
+
+  // Save token and expiry (1 hour)
+  user.passwordResetToken = resetToken;
+  user.passwordResetExpires = new Date(Date.now() + 3600 * 1000);
+  await user.save();
+
+  const frontendUrl = process.env.CLIENT_URL || "http://localhost:3000";
+  const resetLink = `${frontendUrl}/account/reset-password?token=${resetToken}&email=${emailNormalized}`;
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e5e5; border-radius: 8px;">
+      <h2 style="color: #1a1f1a;">Zenfaz Password Reset</h2>
+      <p>You requested a password reset for your ZENFAZ account.</p>
+      <p>Please click the button below to reset your password. This link is valid for 1 hour.</p>
+      <div style="margin: 30px 0;">
+        <a href="${resetLink}" style="background-color: #1a1f1a; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block;">Reset Password</a>
+      </div>
+      <p style="color: #666; font-size: 12px;">If you didn't request this email, please ignore it.</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="color: #999; font-size: 11px;">If the button above doesn't work, copy and paste this URL into your browser:</p>
+      <p style="color: #999; font-size: 11px; word-break: break-all;">${resetLink}</p>
+    </div>
+  `;
+
+  try {
+    await sendEmail(emailNormalized, "ZENFAZ - Reset your password", html);
+  } catch (error) {
+    console.error("Failed to send reset email:", error);
+  }
+
+  // 🔥 Always log the reset link to console for easy testing/debugging
+  console.log("\n==================================================");
+  console.log("🔑 PASSWORD RESET LINK GENERATED:");
+  console.log(resetLink);
+  console.log("==================================================\n");
+
+  res.json({
+    success: true,
+    message: "If an account exists with this email, a reset link has been sent.",
+  });
+});
+
+// ✅ RESET PASSWORD
+export const resetPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { email, token, newPassword } = req.body;
+
+  if (!email || !token || !newPassword) {
+    throw new AppError("Email, token, and new password are required", 400);
+  }
+
+  const emailNormalized = email.trim().toLowerCase();
+
+  const user = await User.findOne({
+    email: emailNormalized,
+    passwordResetToken: token,
+    passwordResetExpires: { $gt: new Date() },
+  });
+
+  if (!user) {
+    throw new AppError("Invalid or expired password reset token", 400);
+  }
+
+  // Hash new password
+  user.password = await bcrypt.hash(newPassword, 10);
+  user.passwordResetToken = null;
+  user.passwordResetExpires = null;
+  await user.save();
+
+  res.json({
+    success: true,
+    message: "Password reset successful. You can now log in with your new password.",
+  });
 });

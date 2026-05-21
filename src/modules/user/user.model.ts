@@ -20,6 +20,8 @@ export interface IUser extends Document {
   phoneVerificationExpires?: Date | null;
 
   refreshToken?: string | null;
+  passwordResetToken?: string | null;
+  passwordResetExpires?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,6 +88,14 @@ const userSchema = new Schema<IUser>(
       default: null,
     },
     phoneVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+    passwordResetToken: {
+      type: String,
+      default: null,
+    },
+    passwordResetExpires: {
       type: Date,
       default: null,
     },
