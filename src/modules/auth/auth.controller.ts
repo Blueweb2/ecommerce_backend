@@ -11,7 +11,7 @@ import { User } from "../user/user.model";
 import { PendingUser } from "../user/pendingUser.model";
 import { sendEmail } from "../../utils/sendEmail";
 import crypto from "crypto";
-import {CLIENT_URL} from "../../config/env";
+import { env } from "../../config/env";
 
 // ✅ GET ME
 export const getMeHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -945,7 +945,7 @@ export const forgotPasswordHandler = asyncHandler(async (req: Request, res: Resp
   user.passwordResetExpires = new Date(Date.now() + 3600 * 1000);
   await user.save();
 
-  const frontendUrl = process.env.CLIENT_URL || "http://localhost:3000";
+  const frontendUrl = env.CLIENT_URL || "http://localhost:3000";
   const resetLink = `${frontendUrl}/account/reset-password?token=${resetToken}&email=${emailNormalized}`;
 
   const html = `
