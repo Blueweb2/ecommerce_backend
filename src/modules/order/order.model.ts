@@ -31,6 +31,8 @@ export interface IOrder extends Document {
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 
   shippingAddress: {
+    fullName: string;
+    phone: string;
     street: string;
     city: string;
     state: string;
@@ -105,6 +107,8 @@ const orderItemSchema = new Schema<IOrderItem>(
 /* 🔹 Address */
 const shippingAddressSchema = new Schema(
   {
+    fullName: { type: String, required: true },
+    phone: { type: String, required: true },
     street: { type: String, required: true },
     city: { type: String, required: true },
     state: { type: String, required: true },

@@ -3,6 +3,7 @@ import { Cart } from "../cart/cart.model";
 import {Product} from "../product/product.model";
 import { CreateOrderDTO } from "./order.types";
 import { AppError } from "../../utils/AppError";
+import { calculateCartTotals } from "../../utils/pricing";
 import { User } from "../user/user.model";
 import * as promoService from "../promo/promo.service";
 
@@ -176,14 +177,23 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       throw new AppError("Cart is empty", 400);
     }
 
-    // ✅ Check stock
+    // ✅ Check stock + refresh GST from product slabs
     for (const item of cart.items) {
       const product = await Product.findById(item.product).session(session);
 
       if (!product || product.stock < item.quantity) {
         throw new AppError("Insufficient stock for some items", 400);
       }
+
+      item.gstPercentage = product.gstPercentage || 0;
+      item.gstAmount = (item.price * item.gstPercentage) / 100;
     }
+
+    const refreshedTotals = calculateCartTotals(cart.items);
+    cart.totalPrice = refreshedTotals.totalPrice;
+    cart.totalGstAmount = refreshedTotals.totalGstAmount;
+    cart.totalQuantity = refreshedTotals.totalQuantity;
+    await cart.save({ session });
 
     // ✅ Map items
     const orderItems = cart.items.map((item) => ({

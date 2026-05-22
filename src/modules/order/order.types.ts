@@ -1,5 +1,7 @@
 export interface CreateOrderDTO {
   shippingAddress: {
+    fullName: string;
+    phone: string;
     street: string;
     city: string;
     state: string;
