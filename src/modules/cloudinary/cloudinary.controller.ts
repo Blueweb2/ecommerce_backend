@@ -6,7 +6,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { AppError } from "../../utils/AppError";
 import { deleteImageFromCloudinary } from "./cloudinary.service";
 
-const ALLOWED_SIGNATURE_FOLDERS = new Set(["ecommerce/designers"]);
+const ALLOWED_SIGNATURE_FOLDERS = new Set(["ecommerce/designers", "ecommerce/banners", "ecommerce/products","ecommerce/categories","ecommerce/collections","ecommerce/stories"]);
 
 const getQueryString = (value: unknown): string | undefined => {
   if (typeof value === "string") {

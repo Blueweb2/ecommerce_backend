@@ -27,6 +27,11 @@ import { protect, restrictTo } from "../../middlewares/auth";
 const router = Router();
 
 // Standard Auth Routes
+router.patch(
+  "/profile",
+  protect,
+  updateProfileHandler
+);
 router.post("/register", registerHandler);
 router.post("/login", loginHandler);
 router.post("/refresh-token", refreshTokenHandler);

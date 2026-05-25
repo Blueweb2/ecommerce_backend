@@ -21,7 +21,10 @@ const addressBaseSchema = z.object({
   street: z.string().min(3, "Street must be at least 3 characters"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
-  postalCode: z.string().min(3, "Postal code is required"),
+  postalCode: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Postal code must be 6 digits"),
   country: z.string().min(2, "Country is required"),
   isDefault: z.boolean().optional(),
 });
