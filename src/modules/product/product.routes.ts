@@ -18,13 +18,7 @@ import {
 } from "./product.controller";
 
 import { upload } from "../../middlewares/upload";
-import { validate } from "../../middlewares/validate";
 import { protect, restrictTo } from "../../middlewares/auth";
-
-import {
-  createProductSchema,
-  updateProductSchema,
-} from "./product.schema";
 
 const router = Router();
 
@@ -62,7 +56,7 @@ router.put(
   "/:id",
   protect,
   restrictTo("admin", "superadmin"),
-  validate(updateProductSchema),
+  upload.array("images", 5),
   updateProductHandler
 );
 
@@ -70,6 +64,7 @@ router.put(
   "/:id/stock",
   protect,
   restrictTo("admin", "superadmin"),
+  upload.none(),
   updateProductStockHandler
 );
 

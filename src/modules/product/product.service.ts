@@ -152,16 +152,48 @@ export const getNewProductsService = async ({
 
 
 // 🔹 Normalize attributes (important for comparison)
-const normalizeAttributes = (attrs?: Record<string, string>) => {
-  if (!attrs) return "{}";
+const isMapLike = (
+  value: Record<string, unknown> | Map<string, unknown>
+): value is Map<string, unknown> => {
+  return typeof (value as { entries?: unknown }).entries === "function";
+};
+
+const toPlainAttributes = (
+  attrs?: Record<string, unknown> | Map<string, unknown>
+) => {
+  if (!attrs) {
+    return {};
+  }
+
+  if (attrs instanceof Map) {
+    return Object.fromEntries(attrs.entries());
+  }
+
+  if (isMapLike(attrs)) {
+    return Object.fromEntries(Array.from(attrs.entries()));
+  }
+
+  return attrs;
+};
+
+const normalizeAttributes = (
+  attrs?: Record<string, unknown> | Map<string, unknown>
+) => {
+  const plainAttributes = toPlainAttributes(attrs);
+  const keys = Object.keys(plainAttributes);
+
+  if (keys.length === 0) {
+    return "{}";
+  }
 
   return JSON.stringify(
-    Object.keys(attrs)
-      .sort()
-      .reduce((acc, key) => {
-        acc[key] = attrs[key]?.trim().toLowerCase() || "";
-        return acc;
-      }, {} as Record<string, string>)
+    keys.sort().reduce((acc, key) => {
+      const normalizedKey = key.trim().toLowerCase();
+      acc[normalizedKey] = String(plainAttributes[key] ?? "")
+        .trim()
+        .toLowerCase();
+      return acc;
+    }, {} as Record<string, string>)
   );
 };
 // 🔹 Generate slug
@@ -262,11 +294,13 @@ export const createProduct = async (data: CreateProductDTO) => {
 
   //  Validate attributes
   if (data.attributes && data.variants) {
-    const validAttributes = new Set(data.attributes.map((a) => a.name));
+    const validAttributes = new Set(
+      data.attributes.map((attribute) => attribute.name.trim().toLowerCase())
+    );
 
     for (const variant of data.variants) {
       for (const key of Object.keys(variant.attributes || {})) {
-        if (!validAttributes.has(key)) {
+        if (!validAttributes.has(key.trim().toLowerCase())) {
           throw new AppError(`Invalid attribute: ${key}`, 400);
         }
       }
@@ -440,6 +474,22 @@ export const updateProduct = async (
     }
   }
 
+  const attributeSource = data.attributes ?? existing.attributes;
+
+  if (attributeSource?.length && data.variants) {
+    const validAttributes = new Set(
+      attributeSource.map((attribute) => attribute.name.trim().toLowerCase())
+    );
+
+    for (const variant of data.variants) {
+      for (const key of Object.keys(variant.attributes || {})) {
+        if (!validAttributes.has(key.trim().toLowerCase())) {
+          throw new AppError(`Invalid attribute: ${key}`, 400);
+        }
+      }
+    }
+  }
+
   //  Handle variants
   if (data.variants?.length) {
     const updatedVariants = [];
@@ -448,8 +498,8 @@ export const updateProduct = async (
     for (const newVariant of data.variants) {
       const normalizedAttrs = Object.fromEntries(
         Object.entries(newVariant.attributes || {}).map(([k, v]) => [
-          k.trim(),
-          v.trim(),
+          k.trim().toLowerCase(),
+          String(v).trim().toLowerCase(),
         ])
       );
 
@@ -610,16 +660,34 @@ export const updateProductStock = async (
   variantSKU?: string
 ) => {
   if (variantSKU) {
-    return await Product.findOneAndUpdate(
-      { _id: productId, "variants.sku": variantSKU },
-      { $set: { "variants.$.stock": newStock } },
-      { new: true }
+    const product = await Product.findOne({
+      _id: productId,
+      "variants.sku": variantSKU,
+    }).populate("category").populate("designer");
+
+    if (!product) {
+      return null;
+    }
+
+    const variant = product.variants.find((item) => item.sku === variantSKU);
+
+    if (!variant) {
+      return null;
+    }
+
+    variant.stock = newStock;
+    product.stock = product.variants.reduce(
+      (sum, item) => sum + (item.stock || 0),
+      0
     );
+
+    await product.save();
+    return product;
   }
 
   return await Product.findByIdAndUpdate(
     productId,
     { stock: newStock },
-    { new: true }
-  );
+    { new: true, runValidators: true }
+  ).populate("category").populate("designer");
 };
