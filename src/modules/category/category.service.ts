@@ -32,6 +32,12 @@ type CategoryPayload = {
   level?: number;
 };
 
+type GetCategoriesOptions = {
+  parentId?: string | null;
+  parentSlug?: string;
+  rootOnly?: boolean;
+};
+
 const ensureValidCategoryId = (id: string, label = "category ID") => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError(`Invalid ${label}`, 400);
@@ -184,8 +190,37 @@ export const getCategoryTree = async () => {
   return roots;
 };
 
-export const getAllCategories = async () => {
-  return Category.find({ isActive: true }).sort({ name: 1 });
+export const getAllCategories = async (options: GetCategoriesOptions = {}) => {
+  const query: {
+    isActive: boolean;
+    parent?: mongoose.Types.ObjectId | null;
+  } = {
+    isActive: true,
+  };
+
+  if (typeof options.parentId !== "undefined") {
+    if (options.parentId === null) {
+      query.parent = null;
+    } else {
+      ensureValidCategoryId(options.parentId, "parent category ID");
+      query.parent = new mongoose.Types.ObjectId(options.parentId);
+    }
+  } else if (options.parentSlug) {
+    const parentCategory = await Category.findOne({
+      slug: options.parentSlug,
+      isActive: true,
+    }).select("_id");
+
+    if (!parentCategory) {
+      return [];
+    }
+
+    query.parent = parentCategory._id as mongoose.Types.ObjectId;
+  } else if (options.rootOnly) {
+    query.parent = null;
+  }
+
+  return Category.find(query).sort({ name: 1 });
 };
 
 export const getCategoryById = async (id: string) => {

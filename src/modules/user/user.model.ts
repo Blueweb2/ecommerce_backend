@@ -11,12 +11,17 @@ export interface IUser extends Document {
   isActive: boolean;
 
   emailVerified: boolean;
+  phoneVerified: boolean;
 
   // 🔥 ADD THESE
   verificationCode?: string;
   verificationExpires?: Date;
+  phoneVerificationCode?: string | null;
+  phoneVerificationExpires?: Date | null;
 
   refreshToken?: string | null;
+  passwordResetToken?: string | null;
+  passwordResetExpires?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,6 +67,10 @@ const userSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    phoneVerified: {
+      type: Boolean,
+      default: false,
+    },
     refreshToken: {
       type: String,
       default: null,
@@ -70,8 +79,23 @@ const userSchema = new Schema<IUser>(
       type: String,
       default: null,
     },
-
     verificationExpires: {
+      type: Date,
+      default: null,
+    },
+    phoneVerificationCode: {
+      type: String,
+      default: null,
+    },
+    phoneVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+    passwordResetToken: {
+      type: String,
+      default: null,
+    },
+    passwordResetExpires: {
       type: Date,
       default: null,
     },

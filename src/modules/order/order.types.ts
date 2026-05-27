@@ -1,5 +1,7 @@
 export interface CreateOrderDTO {
   shippingAddress: {
+    fullName: string;
+    phone: string;
     street: string;
     city: string;
     state: string;
@@ -7,6 +9,8 @@ export interface CreateOrderDTO {
     country: string;
   };
   paymentMethod: "cod" | "razorpay";
+  shippingCharge: number; // ✅ ADD THIS
+  promoCode?: string; // ✅ ADD THIS
   notes?: string;
 }
 

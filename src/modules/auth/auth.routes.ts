@@ -17,13 +17,21 @@ import {
   changePasswordHandler,
   requestEmailChangeHandler,
   verifyEmailChangeHandler,
-
+  verifyPhoneOtpHandler,
+  resendPhoneOtpHandler,
+  forgotPasswordHandler,
+  resetPasswordHandler,
 } from "./auth.controller";
 import { protect, restrictTo } from "../../middlewares/auth";
 
 const router = Router();
 
 // Standard Auth Routes
+router.patch(
+  "/profile",
+  protect,
+  updateProfileHandler
+);
 router.post("/register", registerHandler);
 router.post("/login", loginHandler);
 router.post("/refresh-token", refreshTokenHandler);
@@ -31,10 +39,14 @@ router.post("/logout", logoutHandler);
 router.get("/me", protect, getMeHandler);
 router.post("/verify-otp", verifyOtpHandler);
 router.post("/resend-otp", resendOtpHandler);
+router.post("/verify-phone-otp", verifyPhoneOtpHandler);
+router.post("/resend-phone-otp", resendPhoneOtpHandler);
 router.patch("/update-profile", protect, updateProfileHandler);
 router.patch("/change-password", protect, changePasswordHandler);
 router.post("/request-email-change", protect, requestEmailChangeHandler);
 router.post("/verify-email-change", protect, verifyEmailChangeHandler);
+router.post("/forgot-password", forgotPasswordHandler);
+router.post("/reset-password", resetPasswordHandler);
 
 
 // Customer Management (Admin + Superadmin)

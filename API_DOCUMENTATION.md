@@ -284,6 +284,18 @@ Authorization: Bearer <admin_token>
 
 **GET** `/categories`
 
+Optional query params for filter UIs:
+
+- `mainOnly=true` or `rootOnly=true`: returns only main categories
+- `parent=<categoryId>`: returns subcategories of that category
+- `parentSlug=<categorySlug>`: returns subcategories of the selected category by slug
+
+Examples:
+
+- `/categories?mainOnly=true`
+- `/categories?parent=6658f1d2b8c4c42c77a91234`
+- `/categories?parentSlug=electronics`
+
 ### Get Single Category
 
 **GET** `/categories/:id`

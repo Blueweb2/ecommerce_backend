@@ -55,7 +55,7 @@ const cartItemSchema = new Schema<ICartItem>(
     quantity: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0,
     },
 
     price: {
@@ -126,12 +126,12 @@ cartSchema.pre("save", function () {
 
   const totals = cart.items.reduce(
     (acc: any, item: any) => {
-      const itemGst = (item.price * (item.gstPercentage || 0)) / 100;
-      item.gstAmount = itemGst * item.quantity;
-      
+      const unitGst = (item.price * (item.gstPercentage || 0)) / 100;
+      item.gstAmount = unitGst;
+
       return {
         totalPrice: acc.totalPrice + item.price * item.quantity,
-        totalGstAmount: acc.totalGstAmount + item.gstAmount,
+        totalGstAmount: acc.totalGstAmount + unitGst * item.quantity,
         totalQuantity: acc.totalQuantity + item.quantity,
       };
     },

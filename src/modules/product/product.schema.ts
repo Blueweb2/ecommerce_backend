@@ -18,7 +18,7 @@ const productVariantSchema = z
         message: "Variant must have at least one attribute",
       }),
 
-    discountPrice: z.number().positive().optional(),
+    discountPrice: z.coerce.number().positive().optional(),
     price: z.coerce.number().positive().optional(),
     stock: z.coerce.number().int().min(0),
 
@@ -30,12 +30,12 @@ const productVariantSchema = z
           url: z.string().url(),
           altText: z.string().optional(),
           public_id: z.string().optional(),
-          isPrimary: z.boolean().optional(),
+          isPrimary: z.coerce.boolean().optional(),
         })
       )
       .optional(),
 
-    isActive: z.boolean().optional().default(true),
+    isActive: z.coerce.boolean().optional().default(true),
   })
   .superRefine((data, ctx) => {
     if (
@@ -67,14 +67,20 @@ export const createProductSchema = z
     name: z.string().min(3).max(200),
     description: z.string().min(10).max(5000),
 
-    discountPrice: z.number().positive().optional(),
+    discountPrice: z.coerce.number().positive().optional(),
     deliveryDetails: z.string().optional(),
 
     keyFeatures: z.array(z.string().min(1)).optional(),
 
     price: z.coerce.number().positive(),
 
+    isFabric: z.coerce.boolean().optional().default(false),
+    unit: z.string().optional().default("piece"),
+    minOrderQty: z.coerce.number().positive().optional().default(1),
+    stepQty: z.coerce.number().positive().optional().default(1),
+
     category: z.string().min(1),
+    designer: z.string().optional(), // ✅ Added
 
     sections: z
       .array(z.enum(PRODUCT_SECTION_VALUES))
@@ -92,7 +98,7 @@ export const createProductSchema = z
           url: z.string().url(),
           altText: z.string().optional(),
           public_id: z.string().optional(),
-          isPrimary: z.boolean().optional(),
+          isPrimary: z.coerce.boolean().optional(),
         })
       )
       .optional(),
@@ -108,7 +114,7 @@ export const createProductSchema = z
 
     customizable: z
       .object({
-        isCustomizable: z.boolean().default(false),
+        isCustomizable: z.coerce.boolean().default(false),
         fields: z.array(customFieldSchema).optional(),
       })
       .optional(),
@@ -183,22 +189,28 @@ export const updateProductSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters").max(5000).optional(),
 
 
-  price: z.number().positive("Price must be a positive number").optional(),
-  discountPrice: z.number().positive().optional(),
+  price: z.coerce.number().positive("Price must be a positive number").optional(),
+  discountPrice: z.coerce.number().positive().optional(),
   deliveryDetails: z.string().optional(),
 
   keyFeatures: z
     .array(z.string().min(1))
     .optional(),
 
+  isFabric: z.coerce.boolean().optional(),
+  unit: z.string().optional(),
+  minOrderQty: z.coerce.number().positive().optional(),
+  stepQty: z.coerce.number().positive().optional(),
+
   category: z.string().min(1, "Category is required").optional(),
+  designer: z.string().optional(), // ✅ Added
   sections: z.array(
     z.enum(PRODUCT_SECTION_VALUES)
   ).optional(),
   brand: z.string().optional(),
   sku: z.string().regex(/^[A-Z0-9\-]+$/, "SKU must contain only uppercase letters, numbers, and hyphens").optional(),
 
-  stock: z.number().int().min(0, "Stock cannot be negative").optional(),
+  stock: z.coerce.number().int().min(0, "Stock cannot be negative").optional(),
 
   images: z
     .array(
@@ -206,7 +218,7 @@ export const updateProductSchema = z.object({
         url: z.string().url("Each image must be a valid URL"),
         public_id: z.string().optional(),
         altText: z.string().max(250, "Alt text must be at most 250 characters").optional(),
-        isPrimary: z.boolean().optional(),
+        isPrimary: z.coerce.boolean().optional(),
       })
     )
     .optional(),
@@ -221,9 +233,16 @@ export const updateProductSchema = z.object({
 
   variants: z.array(productVariantSchema).optional(),
 
-  isPublished: z.boolean().optional(),
-  isOnSale: z.boolean().optional(),
-  gstPercentage: z.number().min(0).max(100).optional(),
+  customizable: z
+    .object({
+      isCustomizable: z.coerce.boolean().default(false),
+      fields: z.array(customFieldSchema).optional(),
+    })
+    .optional(),
+
+  isPublished: z.coerce.boolean().optional(),
+  isOnSale: z.coerce.boolean().optional(),
+  gstPercentage: z.coerce.number().min(0).max(100).optional(),
   specifications: z
     .array(
       z.object({

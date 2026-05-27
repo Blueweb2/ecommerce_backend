@@ -3,7 +3,9 @@ import { Cart } from "../cart/cart.model";
 import {Product} from "../product/product.model";
 import { CreateOrderDTO } from "./order.types";
 import { AppError } from "../../utils/AppError";
+import { calculateCartTotals } from "../../utils/pricing";
 import { User } from "../user/user.model";
+import * as promoService from "../promo/promo.service";
 
 import Razorpay from "razorpay";
 import { env } from "../../config/env";
@@ -175,14 +177,23 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       throw new AppError("Cart is empty", 400);
     }
 
-    // ✅ Check stock
+    // ✅ Check stock + refresh GST from product slabs
     for (const item of cart.items) {
       const product = await Product.findById(item.product).session(session);
 
       if (!product || product.stock < item.quantity) {
         throw new AppError("Insufficient stock for some items", 400);
       }
+
+      item.gstPercentage = product.gstPercentage || 0;
+      item.gstAmount = (item.price * item.gstPercentage) / 100;
     }
+
+    const refreshedTotals = calculateCartTotals(cart.items);
+    cart.totalPrice = refreshedTotals.totalPrice;
+    cart.totalGstAmount = refreshedTotals.totalGstAmount;
+    cart.totalQuantity = refreshedTotals.totalQuantity;
+    await cart.save({ session });
 
     // ✅ Map items
     const orderItems = cart.items.map((item) => ({
@@ -195,6 +206,19 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       selectedOptions: item.selectedOptions,
     }));
 
+    // ✅ Apply Promo Code
+    let discountAmount = 0;
+    let promoData: any = undefined;
+
+    if (data.promoCode) {
+      const result = await promoService.validatePromoCode(data.promoCode, cart.totalPrice);
+      discountAmount = result.discountAmount;
+      promoData = {
+        code: result.code,
+        promoId: result.promoId,
+      };
+    }
+
     // 🔥 CREATE ORDER
     const order = await Order.create(
       [
@@ -203,7 +227,10 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
           items: orderItems,
           totalPrice: cart.totalPrice,
           totalGstAmount: cart.totalGstAmount,
-          grandTotal: cart.totalPrice + cart.totalGstAmount,
+          shippingCharge: data.shippingCharge, // ✅ Added
+          promoCode: promoData, // ✅ Added
+          discountAmount: discountAmount, // ✅ Added
+          grandTotal: Math.max(0, cart.totalPrice + cart.totalGstAmount + data.shippingCharge - discountAmount), // ✅ Updated
           totalQuantity: cart.totalQuantity,
           shippingAddress: data.shippingAddress,
           paymentMethod: data.paymentMethod,
@@ -240,6 +267,10 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       createdOrder.paymentStatus = "success";
       createdOrder.paidAt = new Date();
 
+      if (createdOrder.promoCode && createdOrder.promoCode.promoId) {
+        await promoService.incrementPromoUsage(createdOrder.promoCode.promoId.toString());
+      }
+
       await createdOrder.save({ session });
     }
 
@@ -252,7 +283,7 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       }
 
       const razorpayOrder = await razorpay.orders.create({
-        amount: Math.round((cart.totalPrice + cart.totalGstAmount) * 100),
+        amount: Math.round((cart.totalPrice + cart.totalGstAmount + data.shippingCharge) * 100),
         currency: "INR",
       });
 
@@ -305,6 +336,10 @@ export const markOrderPaid = async (
   order.paymentStatus = "success";
 
   await order.save();
+
+  if (order.promoCode && order.promoCode.promoId) {
+    await promoService.incrementPromoUsage(order.promoCode.promoId.toString());
+  }
 
   // reduce stock
   for (const item of order.items) {

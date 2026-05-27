@@ -13,6 +13,8 @@ import webhookRoutes from "./webhook.routes";
 import bannerRoutes from "../modules/banner/banner.routes";
 import storyRoutes from "../modules/story/story.routes";
 import newsletterRoutes from "../modules/newsletter/newsletter.routes";
+import designerRoutes from "../modules/designer/designer.routes";
+import promoRoutes from "../modules/promo/promo.routes";
 
 
 const router = Router();
@@ -26,6 +28,8 @@ router.use("/collections", collectionRoutes);
 router.use("/collection", collectionRoutes);
 router.use("/stories", storyRoutes);
 router.use("/newsletter", newsletterRoutes);
+router.use("/designers", designerRoutes);
+router.use("/promo", promoRoutes);
 
 // Protected routes
 router.use("/cart", cartRoutes);

@@ -71,6 +71,7 @@ export interface CreateProductDTO {
   discountPrice?: number;
 
   category: string;
+  designer?: string; // ✅ ADD THIS
   sections?: ProductSection[];
 
   brand?: string;

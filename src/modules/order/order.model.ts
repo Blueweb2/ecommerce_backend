@@ -19,12 +19,20 @@ export interface IOrder extends Document {
 
   totalPrice: number;
   totalGstAmount: number;
+  shippingCharge: number; // 🔥 ADD THIS
+  promoCode?: {
+    code: string;
+    promoId: mongoose.Types.ObjectId;
+  };
+  discountAmount: number;
   grandTotal: number;
   totalQuantity: number;
 
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 
   shippingAddress: {
+    fullName: string;
+    phone: string;
     street: string;
     city: string;
     state: string;
@@ -72,7 +80,7 @@ const orderItemSchema = new Schema<IOrderItem>(
     quantity: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0,
     },
     price: {
       type: Number,
@@ -99,6 +107,8 @@ const orderItemSchema = new Schema<IOrderItem>(
 /* 🔹 Address */
 const shippingAddressSchema = new Schema(
   {
+    fullName: { type: String, required: true },
+    phone: { type: String, required: true },
     street: { type: String, required: true },
     city: { type: String, required: true },
     state: { type: String, required: true },
@@ -127,6 +137,24 @@ const orderSchema = new Schema<IOrder>(
     },
 
     totalGstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    shippingCharge: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    promoCode: {
+      code: String,
+      promoId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "PromoCode",
+      },
+    },
+    discountAmount: {
       type: Number,
       default: 0,
       min: 0,

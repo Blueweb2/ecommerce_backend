@@ -1,6 +1,7 @@
 import { Cart } from "./cart.model";
-import {Product} from "../product/product.model";
+import { Product } from "../product/product.model";
 import { AppError } from "../../utils/AppError";
+import { calculateCartTotals } from "../../utils/pricing";
 
 
 const normalizeOptions = (options: any[] = []) =>
@@ -14,21 +15,6 @@ const isSameItem = (item: any, incoming: any) => {
     (item.variantId ?? undefined) === (incoming.variantId ?? undefined) &&
     JSON.stringify(normalizeOptions(item.selectedOptions || [])) ===
       JSON.stringify(normalizeOptions(incoming.selectedOptions || []))
-  );
-};
-
-const calculateCartTotals = (items: any[]) => {
-  return items.reduce(
-    (acc, item) => {
-      const itemGst = (item.price * (item.gstPercentage || 0)) / 100;
-      const gstAmount = itemGst * item.quantity;
-      return {
-        totalPrice: acc.totalPrice + item.price * item.quantity,
-        totalGstAmount: acc.totalGstAmount + gstAmount,
-        totalQuantity: acc.totalQuantity + item.quantity,
-      };
-    },
-    { totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 }
   );
 };
 

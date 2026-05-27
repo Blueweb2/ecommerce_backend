@@ -18,8 +18,7 @@ export const addToCartSchema = z.object({
 
   quantity: z
     .number()
-    .int()
-    .min(1, "Quantity must be at least 1"),
+    .min(0, "Quantity must be greater than 0"),
 
 
 
@@ -35,8 +34,7 @@ export const addToCartSchema = z.object({
 export const updateCartItemSchema = z.object({
   quantity: z
     .number()
-    .int()
-    .min(1, "Quantity must be at least 1")
+    .min(0, "Quantity must be greater than 0")
     .optional(),
 
   selectedOptions: z

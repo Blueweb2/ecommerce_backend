@@ -43,9 +43,15 @@ export interface IProduct extends Document {
   price: number;
   discountPrice?: number;
 
+  isFabric: boolean;
+  unit: string;
+  minOrderQty: number;
+  stepQty: number;
+
   isOnSale: boolean; // ✅ ADD THIS
 
   category: mongoose.Types.ObjectId;
+  designer?: mongoose.Types.ObjectId; // ✅ ADD THIS
   sections: string[];
   brand?: string;
   stock: number;
@@ -201,6 +207,26 @@ const productSchema = new Schema<IProduct>(
       type: Number,
       min: 0,
     },
+
+    isFabric: {
+      type: Boolean,
+      default: false,
+    },
+    unit: {
+      type: String,
+      default: "piece",
+    },
+    minOrderQty: {
+      type: Number,
+      default: 1,
+      min: 0.1,
+    },
+    stepQty: {
+      type: Number,
+      default: 1,
+      min: 0.1,
+    },
+
     isOnSale: {
       type: Boolean,
       default: false,
@@ -210,6 +236,12 @@ const productSchema = new Schema<IProduct>(
       type: Schema.Types.ObjectId,
       ref: "Category",
       required: true,
+      index: true,
+    },
+    designer: {
+      type: Schema.Types.ObjectId,
+      ref: "Designer",
+      required: false,
       index: true,
     },
     sections: [
