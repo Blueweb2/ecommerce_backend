@@ -89,8 +89,7 @@ export interface IProduct extends Document {
 const variantSchema = new Schema<IProductVariant>(
   {
     attributes: {
-      type: Map,
-      of: String,
+      type: Schema.Types.Mixed,
       required: false,
     },
 

@@ -6,6 +6,7 @@ import { generateSmartSKU } from "../../utils/sku/sku.generator";
 import { toStringId } from "../../utils/common/toStringId";
 import slugify from "slugify";
 import mongoose from "mongoose";
+import { normalize as normAttr, normalizeKey } from "../../utils/attributes";
 
 
 type GetSaleProductsParams = {
@@ -196,15 +197,67 @@ const normalizeAttributes = (
     }, {} as Record<string, string>)
   );
 };
-// 🔹 Generate slug
 
-// ======================================================
-//  CREATE PRODUCT
-// ======================================================
+export const validateProductAttributesAndVariants = (
+  attributes: { name: string; values: string[] }[] | undefined,
+  variants: any[] | undefined
+) => {
+  const hasAttributes = attributes && attributes.length > 0;
+  const hasVariants = variants && variants.length > 0;
 
+  if (hasAttributes && !hasVariants) {
+    throw new AppError("Variants must be provided when product has attributes", 400);
+  }
 
-// export const createProduct = async (data: CreateProductDTO) => {
-//   // 🔥 SLUG (correct)
+  if (!hasAttributes && hasVariants) {
+    throw new AppError("Product cannot have variants without attributes", 400);
+  }
+
+  if (hasAttributes && variants) {
+    const validAttrKeys = new Set(
+      attributes.map((attr) => normalizeKey(attr.name))
+    );
+
+    const validAttrValuesMap = new Map<string, Set<string>>();
+    attributes.forEach((attr) => {
+      const normKey = normalizeKey(attr.name);
+      const valSet = new Set(attr.values.map((v) => normAttr(v)));
+      validAttrValuesMap.set(normKey, valSet);
+    });
+
+    for (const variant of variants) {
+      const varAttrs = variant.attributes || {};
+      const varKeys = Object.keys(varAttrs);
+
+      if (varKeys.length === 0) {
+        throw new AppError("Variants must contain attributes when product has attributes", 400);
+      }
+
+      // Check keys and values
+      for (const key of varKeys) {
+        const normKey = normalizeKey(key);
+        if (!validAttrKeys.has(normKey)) {
+          throw new AppError(`Invalid attribute key: ${key}`, 400);
+        }
+
+        const val = normAttr(String(varAttrs[key] || ""));
+        const validValues = validAttrValuesMap.get(normKey);
+        if (!validValues || !validValues.has(val)) {
+          throw new AppError(`Invalid value '${varAttrs[key]}' for attribute '${key}'`, 400);
+        }
+      }
+
+      // Ensure variant has all product attributes
+      for (const reqKey of validAttrKeys) {
+        const variantHasKey = varKeys.some((k) => normalizeKey(k) === reqKey);
+        if (!variantHasKey) {
+          throw new AppError(`Variant missing required attribute: ${reqKey}`, 400);
+        }
+      }
+    }
+  }
+};
+
 //   const baseSlug = slugify(data.name, { lower: true, strict: true });
 
 //   let slug = baseSlug;
@@ -292,20 +345,8 @@ export const createProduct = async (data: CreateProductDTO) => {
     slug = `${baseSlug}-${counter++}`;
   }
 
-  //  Validate attributes
-  if (data.attributes && data.variants) {
-    const validAttributes = new Set(
-      data.attributes.map((attribute) => attribute.name.trim().toLowerCase())
-    );
-
-    for (const variant of data.variants) {
-      for (const key of Object.keys(variant.attributes || {})) {
-        if (!validAttributes.has(key.trim().toLowerCase())) {
-          throw new AppError(`Invalid attribute: ${key}`, 400);
-        }
-      }
-    }
-  }
+  //  Validate attributes and variants
+  validateProductAttributesAndVariants(data.attributes, data.variants);
 
   // ===============================
   //  PROCESS VARIANTS FIRST
@@ -476,18 +517,8 @@ export const updateProduct = async (
 
   const attributeSource = data.attributes ?? existing.attributes;
 
-  if (attributeSource?.length && data.variants) {
-    const validAttributes = new Set(
-      attributeSource.map((attribute) => attribute.name.trim().toLowerCase())
-    );
-
-    for (const variant of data.variants) {
-      for (const key of Object.keys(variant.attributes || {})) {
-        if (!validAttributes.has(key.trim().toLowerCase())) {
-          throw new AppError(`Invalid attribute: ${key}`, 400);
-        }
-      }
-    }
+  if (data.variants) {
+    validateProductAttributesAndVariants(attributeSource, data.variants);
   }
 
   //  Handle variants
