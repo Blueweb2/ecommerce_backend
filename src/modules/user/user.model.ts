@@ -9,6 +9,7 @@ export interface IUser extends Document {
   avatar?: string;
   role: "user" | "admin" | "superadmin";
   isActive: boolean;
+  deletedAt?: Date | null;
 
   emailVerified: boolean;
   phoneVerified: boolean;
@@ -99,8 +100,13 @@ const userSchema = new Schema<IUser>(
       type: Date,
       default: null,
     },
+      deletedAt: {
+  type: Date,
+  default: null,
+},
   },
-  { timestamps: true }
+  { timestamps: true },
+
 );
 
 

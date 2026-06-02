@@ -21,6 +21,7 @@ import {
   resendPhoneOtpHandler,
   forgotPasswordHandler,
   resetPasswordHandler,
+  deleteAccountHandler,
 } from "./auth.controller";
 import { protect, restrictTo } from "../../middlewares/auth";
 
@@ -47,6 +48,11 @@ router.post("/request-email-change", protect, requestEmailChangeHandler);
 router.post("/verify-email-change", protect, verifyEmailChangeHandler);
 router.post("/forgot-password", forgotPasswordHandler);
 router.post("/reset-password", resetPasswordHandler);
+router.delete(
+  "/account",
+  protect,
+  deleteAccountHandler
+);
 
 
 // Customer Management (Admin + Superadmin)
