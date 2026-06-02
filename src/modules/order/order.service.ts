@@ -1,6 +1,6 @@
 import { Order } from "./order.model";
 import { Cart } from "../cart/cart.model";
-import {Product} from "../product/product.model";
+import { Product } from "../product/product.model";
 import { CreateOrderDTO } from "./order.types";
 import { AppError } from "../../utils/AppError";
 import { calculateCartTotals } from "../../utils/pricing";
@@ -12,10 +12,10 @@ import { env } from "../../config/env";
 
 let razorpay: Razorpay | null = null;
 
-if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET  ) {
+if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
   razorpay = new Razorpay({
     key_id: env.RAZORPAY_KEY_ID,
-    key_secret: env.RAZORPAY_KEY_SECRET  ,
+    key_secret: env.RAZORPAY_KEY_SECRET,
   });
 }
 
@@ -232,6 +232,8 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
           discountAmount: discountAmount, // ✅ Added
           grandTotal: Math.max(0, cart.totalPrice + cart.totalGstAmount + data.shippingCharge - discountAmount), // ✅ Updated
           totalQuantity: cart.totalQuantity,
+           packagingOption: data.packagingOption,
+          giftMessage: data.giftMessage,
           shippingAddress: data.shippingAddress,
           paymentMethod: data.paymentMethod,
           notes: data.notes,

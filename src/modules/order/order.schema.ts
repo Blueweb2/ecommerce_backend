@@ -34,6 +34,8 @@ export const createOrderSchema = z
     shippingCharge: z.number().min(0),
     promoCode: z.string().optional(),
     notes: z.string().max(500).optional(),
+     packagingOption: z.enum(["standard", "gift"]).optional(),
+  giftMessage: z.string().max(500).optional(),
   })
   .strict();
 
