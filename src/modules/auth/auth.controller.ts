@@ -767,6 +767,56 @@ export const deleteAdminHandler = asyncHandler(async (req: Request, res: Respons
 
   res.json({ message: "Admin deleted successfully" });
 });
+
+
+export const deleteAccountHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { password } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const user = await User.findById(userId)
+      .select("+password");
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const match = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!match) {
+      throw new AppError(
+        "Incorrect password",
+        400
+      );
+    }
+
+    user.isActive = false;
+    user.deletedAt = new Date();
+    user.refreshToken = null;
+
+    await user.save();
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  }
+);
+
+
 // ✅ UPDATE PROFILE (Name, Phone)
 export const updateProfileHandler = asyncHandler(async (req: Request, res: Response) => {
   const { name, phone } = req.body;
