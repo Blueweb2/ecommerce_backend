@@ -14,7 +14,9 @@ export interface IOrderItem {
 }
 
 export interface IOrder extends Document {
-  user: mongoose.Types.ObjectId;
+  user?: mongoose.Types.ObjectId;
+  isGuestOrder: boolean;
+  guestEmail?: string;
   items: IOrderItem[];
 
   totalPrice: number;
@@ -125,8 +127,17 @@ const orderSchema = new Schema<IOrder>(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
+      default: null,
       index: true,
+    },
+    isGuestOrder: {
+      type: Boolean,
+      default: false,
+    },
+    guestEmail: {
+      type: String,
+      default: null,
     },
 
     items: [orderItemSchema],

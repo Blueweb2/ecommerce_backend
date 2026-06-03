@@ -131,11 +131,22 @@ export const mergeCart = async (
   }[]
 ) => {
   // 🔹 1. Get or create cart
-  let cart = await Cart.findOne({ user: userId });
-
-  if (!cart) {
-    cart = await Cart.create({ user: userId, items: [] });
+ let cart = await Cart.findOneAndUpdate(
+  { user: userId },
+  {
+    $setOnInsert: {
+      user: userId,
+      items: [],
+      totalPrice: 0,
+      totalGstAmount: 0,
+      totalQuantity: 0,
+    },
+  },
+  {
+    upsert: true,
+    returnDocument: "after",
   }
+);
 
   if (!items.length) return cart;
 
@@ -248,9 +259,16 @@ export const updateCartItem = async (
 };;
 
 export const clearCart = async (userId: string) => {
-  return await Cart.findOneAndUpdate(
-    { user: userId },
-    { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 },
-    { new: true }
-  );
+ return await Cart.findOneAndUpdate(
+  { user: userId },
+  {
+    items: [],
+    totalPrice: 0,
+    totalGstAmount: 0,
+    totalQuantity: 0,
+  },
+  {
+    returnDocument: "after",
+  }
+);
 };

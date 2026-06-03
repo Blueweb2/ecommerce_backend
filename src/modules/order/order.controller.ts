@@ -84,7 +84,7 @@ export const createOrderHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
 
-    if (!userId) {
+    if (!userId && !req.body.isGuestOrder) {
       throw new AppError("Unauthorized", 401);
     }
 
@@ -134,7 +134,7 @@ export const getOrderHandler = asyncHandler(
     }
 
     // Check if user owns this order
-    if (order.user.toString() !== (req as any).user.id && !["admin", "superadmin"].includes((req as any).user.role)) {
+    if (order.user?.toString() !== (req as any).user.id && !["admin", "superadmin"].includes((req as any).user.role)) {
       throw new AppError("You do not have permission to view this order", 403);
     }
 
@@ -164,8 +164,9 @@ export const getAllOrdersHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
+    const customerType = req.query.customerType as string | undefined;
 
-    const result = await orderService.getAllOrders(page, limit);
+    const result = await orderService.getAllOrders(page, limit, customerType);
     sendResponse(res, 200, "All orders fetched", result);
   }
 );
