@@ -55,6 +55,78 @@ const designerSchema = new Schema<IDesigner>(
       trim: true,
     },
 
+    businessName: {
+      type: String,
+      trim: true,
+    },
+
+    email: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+    },
+
+    phone: {
+      type: String,
+      trim: true,
+    },
+
+    gstNumber: {
+      type: String,
+      trim: true,
+    },
+
+    website: {
+      type: String,
+      trim: true,
+    },
+
+    categories: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Category",
+      },
+    ],
+
+    address: {
+      addressLine1: String,
+      addressLine2: String,
+      city: String,
+      district: String,
+      state: String,
+      country: String,
+      pincode: String,
+    },
+
+    socialLinks: {
+      instagram: String,
+      facebook: String,
+      youtube: String,
+      pinterest: String,
+      twitter: String,
+    },
+
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+
+    role: {
+      type: String,
+      default: "designer",
+    },
+
+    password: {
+      type: String,
+      select: false,
+    },
+
+    lastLogin: {
+      type: Date,
+    },
+
     avatar: {
       type: designerImageSchema,
     },

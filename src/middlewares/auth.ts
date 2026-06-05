@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { verifyAccessToken } from "../config/jwt";
 import { User } from "../modules/user/user.model";
+import { Designer } from "../modules/designer/designer.model";
 import { AppError } from "../utils/AppError";
 
 interface JwtPayload {
@@ -12,6 +13,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: JwtPayload;
+      designer?: JwtPayload;
     }
   }
 }
@@ -56,6 +58,47 @@ export const protect = async (
     req.user = {
       id: user._id.toString(),
       role: user.role,
+    };
+
+    next();
+  } catch {
+    return next(new AppError("Invalid or expired token", 401));
+  }
+};
+
+export const protectDesigner = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  let token: string | undefined;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  if (!token && req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
+  }
+
+  if (!token) {
+    return next(new AppError("No token provided", 401));
+  }
+
+  try {
+    const decoded = verifyAccessToken(token) as JwtPayload;
+    const designer = await Designer.findById(decoded.id).select("_id role");
+
+    if (!designer || designer.role !== "designer") {
+      return next(new AppError("Not authorized as a designer", 403));
+    }
+
+    req.designer = {
+      id: designer._id.toString(),
+      role: designer.role,
     };
 
     next();

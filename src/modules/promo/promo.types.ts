@@ -1,6 +1,9 @@
+import mongoose from "mongoose";
+
 export type PromoType = "percentage" | "fixed";
 
 export interface IPromoCode {
+  designer?: mongoose.Types.ObjectId;
   code: string;
   type: PromoType;
   value: number;

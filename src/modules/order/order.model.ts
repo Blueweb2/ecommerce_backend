@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IOrderItem {
   product: mongoose.Types.ObjectId;
+  designer?: mongoose.Types.ObjectId;
   quantity: number;
   price: number;
   gstPercentage: number;
@@ -79,6 +80,10 @@ const orderItemSchema = new Schema<IOrderItem>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
       required: true,
+    },
+    designer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Designer",
     },
     quantity: {
       type: Number,

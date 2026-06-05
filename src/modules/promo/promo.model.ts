@@ -5,6 +5,10 @@ export interface IPromoCodeDoc extends IPromoCode, Document {}
 
 const promoCodeSchema = new Schema<IPromoCodeDoc>(
   {
+    designer: {
+      type: Schema.Types.ObjectId,
+      ref: "Designer",
+    },
     code: {
       type: String,
       required: true,

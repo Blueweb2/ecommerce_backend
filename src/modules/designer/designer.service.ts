@@ -1,14 +1,30 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 import { AppError } from "../../utils/AppError";
 import { Designer } from "./designer.model";
 import { IDesigner } from "./designer.types";
 import { buildUniqueDesignerSlug, escapeRegex } from "./designer.utils";
 
+import { sendEmail } from "../../utils/sendEmail";
+import crypto from "crypto";
+
 type DesignerPayload = {
   name?: string;
   description?: string;
   brandName?: string;
+  
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  gstNumber?: string;
+  website?: string;
+  categories?: string[];
+  address?: IDesigner["address"];
+  socialLinks?: IDesigner["socialLinks"];
+  isFeatured?: boolean;
+  password?: string;
+
   avatar?: IDesigner["avatar"];
   brandImage?: IDesigner["brandImage"];
   bannerImage?: IDesigner["bannerImage"];
@@ -62,11 +78,30 @@ export const createDesignerService = async (payload: DesignerPayload) => {
 
   const slug = await buildUniqueDesignerSlug(payload.name);
 
+  // Generate temporary password if not provided
+  const rawPassword = payload.password || crypto.randomBytes(4).toString("hex");
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(rawPassword, salt);
+
   try {
-    return await Designer.create({
+    const newDesigner = await Designer.create({
       ...payload,
+      password: hashedPassword,
       slug,
     });
+
+    if (payload.email) {
+      const emailHtml = `
+        <h1>Welcome to Zenfaz!</h1>
+        <p>Your designer account has been created.</p>
+        <p>Email: ${payload.email}</p>
+        <p>Password: <strong>${rawPassword}</strong></p>
+        <p>Please login and change your password.</p>
+      `;
+      await sendEmail(payload.email, "Your Designer Account Credentials", emailHtml);
+    }
+
+    return newDesigner;
   } catch (error: any) {
     if (error?.code === 11000 && error?.keyPattern?.slug) {
       throw new AppError("Designer slug already exists", 409);
@@ -187,6 +222,33 @@ export const updateDesignerService = async (
 
   if (typeof payload.isActive === "boolean") {
     designer.isActive = payload.isActive;
+  }
+
+  if (typeof payload.isFeatured === "boolean") {
+    designer.isFeatured = payload.isFeatured;
+  }
+
+  if (typeof payload.businessName !== "undefined") designer.businessName = payload.businessName;
+  if (typeof payload.email !== "undefined") designer.email = payload.email;
+  if (typeof payload.phone !== "undefined") designer.phone = payload.phone;
+  if (typeof payload.gstNumber !== "undefined") designer.gstNumber = payload.gstNumber;
+  if (typeof payload.website !== "undefined") designer.website = payload.website;
+  
+  if (typeof payload.categories !== "undefined") {
+    designer.categories = payload.categories as any;
+  }
+
+  if (typeof payload.address !== "undefined") {
+    designer.address = payload.address;
+  }
+
+  if (typeof payload.socialLinks !== "undefined") {
+    designer.socialLinks = payload.socialLinks;
+  }
+
+  if (payload.password) {
+    const salt = await bcrypt.genSalt(10);
+    designer.password = await bcrypt.hash(payload.password, salt);
   }
 
   try {
