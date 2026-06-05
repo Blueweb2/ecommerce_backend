@@ -11,7 +11,12 @@ export interface CreateOrderDTO {
   paymentMethod: "cod" | "razorpay";
   shippingCharge: number; // ✅ ADD THIS
   promoCode?: string; // ✅ ADD THIS
+   packagingOption?: "standard" | "gift";
+  giftMessage?: string;
   notes?: string;
+  isGuestOrder?: boolean;
+  guestEmail?: string;
+  items?: any[];
 }
 
 export interface UpdateOrderStatusDTO {

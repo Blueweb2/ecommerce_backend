@@ -48,6 +48,11 @@ export const protect = async (
       return next(new AppError("User no longer exists", 401));
     }
 
+    console.log("AUTH USER:", {
+  id: user._id.toString(),
+  role: user.role,
+});
+
     req.user = {
       id: user._id.toString(),
       role: user.role,
@@ -70,6 +75,46 @@ export const restrictTo =
           )
         );
       }
+      console.log("ROLE CHECK:", req.user);
 
       next();
     };
+
+export const optionalProtect = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  let token: string | undefined;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  if (!token && req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = verifyAccessToken(token) as JwtPayload;
+    const user = await User.findById(decoded.id).select("_id role");
+
+    if (user) {
+      req.user = {
+        id: user._id.toString(),
+        role: user.role,
+      };
+      console.log("OPTIONAL PROTECT USER:", req.user);
+    }
+    next();
+  } catch {
+    return next();
+  }
+};

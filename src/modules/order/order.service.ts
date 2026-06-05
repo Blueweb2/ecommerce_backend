@@ -1,6 +1,6 @@
 import { Order } from "./order.model";
 import { Cart } from "../cart/cart.model";
-import {Product} from "../product/product.model";
+import { Product } from "../product/product.model";
 import { CreateOrderDTO } from "./order.types";
 import { AppError } from "../../utils/AppError";
 import { calculateCartTotals } from "../../utils/pricing";
@@ -12,10 +12,10 @@ import { env } from "../../config/env";
 
 let razorpay: Razorpay | null = null;
 
-if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET  ) {
+if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
   razorpay = new Razorpay({
     key_id: env.RAZORPAY_KEY_ID,
-    key_secret: env.RAZORPAY_KEY_SECRET  ,
+    key_secret: env.RAZORPAY_KEY_SECRET,
   });
 }
 
@@ -47,6 +47,13 @@ export const requestRefund = async (orderId: string, userId: string) => {
   const order = await Order.findById(orderId);
 
   if (!order) throw new AppError("Order not found", 404);
+
+  if (order.isGuestOrder || !order.user) {
+    throw new AppError(
+      "Guest orders cannot request refunds through user account",
+      403
+    );
+  }
 
   if (order.user.toString() !== userId) {
     throw new AppError("Unauthorized", 403);
@@ -88,6 +95,13 @@ export const requestReturn = async (orderId: string, userId: string, reason: str
   const order = await Order.findById(orderId);
 
   if (!order) throw new AppError("Order not found", 404);
+
+  if (order.isGuestOrder || !order.user) {
+    throw new AppError(
+      "Guest orders cannot request returns through user account",
+      403
+    );
+  }
 
   if (order.user.toString() !== userId) {
     throw new AppError("Unauthorized", 403);
@@ -166,15 +180,36 @@ export const markPaymentFailed = async (orderId: string) => {
   return order;
 };
 
-export const createOrder = async (userId: string, data: CreateOrderDTO) => {
+export const createOrder = async (userId: string | undefined, data: CreateOrderDTO) => {
   const session = await Order.startSession();
   session.startTransaction();
 
   try {
-    const cart = await Cart.findOne({ user: userId }).session(session);
+    let cart: any = null;
 
-    if (!cart || cart.items.length === 0) {
-      throw new AppError("Cart is empty", 400);
+    if (data.isGuestOrder) {
+      if (!data.items || data.items.length === 0) {
+        throw new AppError("Cart is empty", 400);
+      }
+      cart = {
+        items: data.items.map((item: any) => ({
+          product: item.product,
+          quantity: item.quantity,
+          variantId: item.variantId,
+          selectedOptions: item.selectedOptions || [],
+          price: item.price || 0,
+          gstPercentage: 0,
+          gstAmount: 0
+        })),
+        totalPrice: 0,
+        totalGstAmount: 0,
+        totalQuantity: 0
+      };
+    } else {
+      cart = await Cart.findOne({ user: userId }).session(session);
+      if (!cart || cart.items.length === 0) {
+        throw new AppError("Cart is empty", 400);
+      }
     }
 
     // ✅ Check stock + refresh GST from product slabs
@@ -185,6 +220,9 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
         throw new AppError("Insufficient stock for some items", 400);
       }
 
+      if (data.isGuestOrder) {
+        item.price = product.price;
+      }
       item.gstPercentage = product.gstPercentage || 0;
       item.gstAmount = (item.price * item.gstPercentage) / 100;
     }
@@ -193,10 +231,13 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
     cart.totalPrice = refreshedTotals.totalPrice;
     cart.totalGstAmount = refreshedTotals.totalGstAmount;
     cart.totalQuantity = refreshedTotals.totalQuantity;
-    await cart.save({ session });
+
+    if (!data.isGuestOrder) {
+      await cart.save({ session });
+    }
 
     // ✅ Map items
-    const orderItems = cart.items.map((item) => ({
+    const orderItems = cart.items.map((item: any) => ({
       product: item.product,
       quantity: item.quantity,
       price: item.price,
@@ -223,7 +264,9 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
     const order = await Order.create(
       [
         {
-          user: userId,
+          user: data.isGuestOrder ? undefined : userId,
+          isGuestOrder: data.isGuestOrder || false,
+          guestEmail: data.guestEmail,
           items: orderItems,
           totalPrice: cart.totalPrice,
           totalGstAmount: cart.totalGstAmount,
@@ -232,6 +275,8 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
           discountAmount: discountAmount, // ✅ Added
           grandTotal: Math.max(0, cart.totalPrice + cart.totalGstAmount + data.shippingCharge - discountAmount), // ✅ Updated
           totalQuantity: cart.totalQuantity,
+          packagingOption: data.packagingOption,
+          giftMessage: data.giftMessage,
           shippingAddress: data.shippingAddress,
           paymentMethod: data.paymentMethod,
           notes: data.notes,
@@ -257,11 +302,13 @@ export const createOrder = async (userId: string, data: CreateOrderDTO) => {
       }
 
       // clear cart
-      await Cart.updateOne(
-        { user: userId },
-        { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 },
-        { session }
-      );
+      if (!data.isGuestOrder) {
+        await Cart.updateOne(
+          { user: userId },
+          { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 },
+          { session }
+        );
+      }
 
       createdOrder.isPaid = true;
       createdOrder.paymentStatus = "success";
@@ -349,10 +396,12 @@ export const markOrderPaid = async (
   }
 
   // clear cart
-  await Cart.updateOne(
-    { user: order.user },
-    { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 }
-  );
+  if (!order.isGuestOrder) {
+    await Cart.updateOne(
+      { user: order.user },
+      { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 }
+    );
+  }
 
   return order;
 };
@@ -364,6 +413,13 @@ export const cancelOrder = async (orderId: string, userId: string) => {
   if (!order) throw new AppError("Order not found", 404);
 
   // ✅ Only owner can cancel
+  if (order.isGuestOrder || !order.user) {
+    throw new AppError(
+      "Guest orders cannot be cancelled through user account",
+      403
+    );
+  }
+
   if (order.user.toString() !== userId) {
     throw new AppError("Unauthorized", 403);
   }
@@ -486,17 +542,21 @@ export const updateOrderStatus = async (id: string, status: string) => {
   );
 };
 
-export const getAllOrders = async (page: number = 1, limit: number = 10) => {
+export const getAllOrders = async (page: number = 1, limit: number = 10, customerType?: string) => {
   const skip = (page - 1) * limit;
 
+  const filter: any = {};
+  if (customerType === 'guest') filter.isGuestOrder = true;
+  if (customerType === 'registered') filter.isGuestOrder = false;
+
   const [orders, total] = await Promise.all([
-    Order.find()
+    Order.find(filter)
       .populate("user", "name email")
       .populate("items.product", "name price")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
-    Order.countDocuments(),
+    Order.countDocuments(filter),
   ]);
 
   return {

@@ -43,10 +43,82 @@ export const registerHandler = asyncHandler(async (req: Request, res: Response) 
   const emailNormalized = email.trim().toLowerCase();
 
   // 🔍 Check existing user in main table
-  const existingUser = await User.findOne({ email: emailNormalized });
-  if (existingUser) {
-    throw new AppError("Email already in use", 400);
+const existingUser = await User.findOne({
+  email: emailNormalized,
+});
+
+if (existingUser) {
+
+  // Reactivate previously deleted account
+  if (!existingUser.isActive) {
+
+    const hashedPassword = await bcrypt.hash(
+      password,
+      10
+    );
+
+    existingUser.name = name;
+    existingUser.password = hashedPassword;
+    existingUser.phone = phone;
+
+    existingUser.isActive = true;
+    existingUser.deletedAt = null;
+
+    existingUser.emailVerified = false;
+    // existingUser.phoneVerified = false;
+
+    const emailOtp =
+      Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
+
+    const phoneOtp =
+      Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
+
+    existingUser.verificationCode = emailOtp;
+    existingUser.verificationExpires =
+      new Date(Date.now() + 10 * 60 * 1000);
+
+    existingUser.phoneVerificationCode =
+      phoneOtp;
+
+    existingUser.phoneVerificationExpires =
+      new Date(Date.now() + 10 * 60 * 1000);
+
+    await existingUser.save();
+
+    await sendEmail(
+      emailNormalized,
+      "Verify Your Email - OTP",
+      `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Welcome Back</h2>
+          <p>Your OTP code is:</p>
+          <h1 style="letter-spacing:4px;">
+            ${emailOtp}
+          </h1>
+          <p>
+            This OTP expires in 10 minutes.
+          </p>
+        </div>
+      `
+    );
+
+    return res.status(200).json({
+      success: true,
+      restored: true,
+      message:
+        "Your previous account has been restored. Please verify your email.",
+    });
   }
+
+  throw new AppError(
+    "Email already in use",
+    400
+  );
+}
 
   // 🔐 Hash password
   const hashedPassword = await bcrypt.hash(password, 10);

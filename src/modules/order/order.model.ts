@@ -14,7 +14,9 @@ export interface IOrderItem {
 }
 
 export interface IOrder extends Document {
-  user: mongoose.Types.ObjectId;
+  user?: mongoose.Types.ObjectId;
+  isGuestOrder: boolean;
+  guestEmail?: string;
   items: IOrderItem[];
 
   totalPrice: number;
@@ -57,7 +59,8 @@ export interface IOrder extends Document {
   paidAt?: Date;
 
   notes?: string;
-  createdAt: Date;
+  packagingOption?: "standard" | "gift";
+  giftMessage?: string; createdAt: Date;
   updatedAt: Date;
 }
 /* 🔹 Selected Options */
@@ -124,8 +127,17 @@ const orderSchema = new Schema<IOrder>(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
+      default: null,
       index: true,
+    },
+    isGuestOrder: {
+      type: Boolean,
+      default: false,
+    },
+    guestEmail: {
+      type: String,
+      default: null,
     },
 
     items: [orderItemSchema],
@@ -184,46 +196,59 @@ const orderSchema = new Schema<IOrder>(
       required: true,
     },
 
+    packagingOption: {
+      type: String,
+      enum: ["standard", "gift"],
+      default: "standard",
+    },
+
+    giftMessage: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
     paymentMethod: {
       type: String,
       enum: ["cod", "razorpay"],
       required: true,
     },
     paymentStatus: {
-  type: String,
-  enum: ["pending", "success", "failed"],
-  default: "pending",
-  index: true, // ✅ good for queries
-},
-razorpayOrderId: {
-  type: String,
-  index: true,
-},
+      type: String,
+      enum: ["pending", "success", "failed"],
+      default: "pending",
+      index: true, // ✅ good for queries
+    },
+    razorpayOrderId: {
+      type: String,
+      index: true,
+    },
 
-paymentId: {
-  type: String,
-},
+    paymentId: {
+      type: String,
+    },
 
-razorpaySignature: {
-  type: String,
-  index: true,
-},
-refundStatus: {
-  type: String,
-  enum: ["none", "requested", "approved", "rejected"],
-  default: "none",
-},
-returnStatus: {
-  type: String,
-  enum: ["none", "requested", "approved", "rejected", "received"],
-  default: "none",
-},
-returnReason: {
-  type: String,
-},
-returnRequestedAt: {
-  type: Date,
-},
+    razorpaySignature: {
+      type: String,
+      index: true,
+    },
+    refundStatus: {
+      type: String,
+      enum: ["none", "requested", "approved", "rejected"],
+      default: "none",
+    },
+    returnStatus: {
+      type: String,
+      enum: ["none", "requested", "approved", "rejected", "received"],
+      default: "none",
+    },
+    returnReason: {
+      type: String,
+    },
+    returnRequestedAt: {
+      type: Date,
+    },
 
     isPaid: {
       type: Boolean,
