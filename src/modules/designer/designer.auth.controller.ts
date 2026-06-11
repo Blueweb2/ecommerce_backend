@@ -99,11 +99,17 @@ export const refreshDesignerToken = async (
     }
 
     // ONLY look in the Designer collection
-    const designer = await Designer.findById(decoded.id).select("_id role isActive");
+const designer = await Designer.findById(decoded.id)
+  .select("+refreshToken");
 
-    if (!designer) {
-      return next(new AppError("Designer not found", 401));
-    }
+if (!designer) {
+  throw new AppError("Designer not found", 401);
+}
+
+if (designer.refreshToken !== token) {
+  throw new AppError("Invalid refresh token", 401);
+}
+   
 
     if (!designer.isActive) {
       return next(new AppError("Designer account is deactivated", 403));
@@ -145,6 +151,17 @@ export const logoutDesigner = async (
   next: NextFunction
 ) => {
   try {
+    const designerId = req.designer?.id;
+
+    if (designerId) {
+      await Designer.findByIdAndUpdate(
+        designerId,
+        {
+          refreshToken: null,
+        }
+      );
+    }
+
     res.clearCookie("designerRefreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
