@@ -80,6 +80,8 @@ export const protect = async (
       id: user._id.toString(),
       role: user.role,
     };
+    console.log("REQ.USER", req.user);
+console.log("REQ.DESIGNER", req.designer);
 
     next();
   } catch {

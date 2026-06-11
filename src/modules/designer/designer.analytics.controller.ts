@@ -15,20 +15,23 @@ export const getDesignerAnalytics = async (
     // Get all orders containing products from this designer
     const orders = await Order.find({ "items.designer": designerId });
 
+    console.log("DESIGNER:", (req as any).designer);
+    console.log("USER:", (req as any).user);
+
     // Arrays to store trends
     const revenueTrend: any[] = [];
     const ordersTrend: any[] = [];
-    
+
     // For grouping by date
     const revenueByDate: Record<string, number> = {};
     const ordersByDate: Record<string, number> = {};
-    
+
     const productSales: Record<string, { product: any; soldCount: number; revenue: number }> = {};
     const categorySales: Record<string, { category: any; soldCount: number; revenue: number }> = {};
 
     orders.forEach(order => {
       const dateStr = order.createdAt.toISOString().split("T")[0];
-      
+
       const designerItems = order.items.filter(
         item => item.designer?.toString() === designerId
       );
@@ -40,7 +43,7 @@ export const getDesignerAnalytics = async (
 
       designerItems.forEach(item => {
         const itemRevenue = item.price * item.quantity;
-        
+
         if (!revenueByDate[dateStr]) revenueByDate[dateStr] = 0;
         revenueByDate[dateStr] += itemRevenue;
 
@@ -72,11 +75,11 @@ export const getDesignerAnalytics = async (
       .slice(0, 10);
 
     const topProductsDetails = await Product.find({ _id: { $in: topProductsIds } }).select("name category");
-    
+
     const topProducts = topProductsDetails.map(p => {
       const catId = p.category.toString();
       const stats = productSales[p._id.toString()];
-      
+
       // Calculate category performance
       if (!categorySales[catId]) {
         categorySales[catId] = { category: catId, soldCount: 0, revenue: 0 };
