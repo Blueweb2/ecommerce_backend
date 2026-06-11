@@ -236,16 +236,21 @@ export const createOrder = async (userId: string | undefined, data: CreateOrderD
       await cart.save({ session });
     }
 
-    // ✅ Map items
-    const orderItems = cart.items.map((item: any) => ({
-      product: item.product,
-      quantity: item.quantity,
-      price: item.price,
-      gstPercentage: item.gstPercentage,
-      gstAmount: item.gstAmount,
-      variantId: item.variantId,
-      selectedOptions: item.selectedOptions,
-    }));
+    // ✅ Map items and enforce designer reference from product definition
+    const orderItems = [];
+    for (const item of cart.items) {
+      const product = await Product.findById(item.product).session(session);
+      orderItems.push({
+        product: item.product,
+        designer: product?.designer || undefined,
+        quantity: item.quantity,
+        price: item.price,
+        gstPercentage: item.gstPercentage,
+        gstAmount: item.gstAmount,
+        variantId: item.variantId,
+        selectedOptions: item.selectedOptions,
+      });
+    }
 
     // ✅ Apply Promo Code
     let discountAmount = 0;

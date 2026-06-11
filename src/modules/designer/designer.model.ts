@@ -43,16 +43,17 @@ const designerSchema = new Schema<IDesigner>(
       trim: true,
     },
 
+    // Profile fields — optional until designer completes profile
     description: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     brandName: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     businessName: {
@@ -123,6 +124,11 @@ const designerSchema = new Schema<IDesigner>(
       select: false,
     },
 
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+
     lastLogin: {
       type: Date,
     },
@@ -148,6 +154,24 @@ const designerSchema = new Schema<IDesigner>(
       type: Boolean,
       default: true,
     },
+
+    // Admin approval workflow
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    verificationStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+
+    // Profile completion tracking
+    profileCompleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -156,6 +180,7 @@ const designerSchema = new Schema<IDesigner>(
 
 designerSchema.index({ slug: 1 }, { unique: true });
 designerSchema.index({ isActive: 1, isFavorite: 1, createdAt: -1 });
+designerSchema.index({ isVerified: 1, verificationStatus: 1 });
 designerSchema.index({ name: "text", brandName: "text", description: "text" });
 
 export const Designer = mongoose.model<IDesigner>(

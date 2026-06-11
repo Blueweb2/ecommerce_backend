@@ -28,8 +28,8 @@ export interface IDesignerSocialLinks {
 export interface IDesigner extends Document {
   name: string;
   slug: string;
-  description: string;
-  brandName: string;
+  description?: string;
+  brandName?: string;
 
   businessName?: string;
   email?: string;
@@ -44,6 +44,7 @@ export interface IDesigner extends Document {
   isFeatured?: boolean;
   role?: "designer";
   password?: string;
+  refreshToken?: string;
   lastLogin?: Date;
 
   avatar?: IDesignerImage;
@@ -51,6 +52,14 @@ export interface IDesigner extends Document {
   bannerImage?: IDesignerImage;
   isFavorite: boolean;
   isActive: boolean;
+
+  // Admin approval workflow
+  isVerified: boolean;
+  verificationStatus: "pending" | "approved" | "rejected";
+
+  // Profile completion
+  profileCompleted: boolean;
+
   createdAt: Date;
   updatedAt: Date;
 }

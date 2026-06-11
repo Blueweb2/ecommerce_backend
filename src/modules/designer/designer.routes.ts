@@ -10,21 +10,36 @@ import {
   getDesignerById,
   getDesignerBySlug,
   updateDesigner,
+  updateDesignerStorefront,
+  approveDesigner,
+  rejectDesigner,
+  adminResetPassword,
 } from "./designer.controller";
+
 import { validate } from "../../middlewares/validate";
-import { protect, restrictTo } from "../../middlewares/auth";
-import { protectDesigner } from "../../middlewares/auth";
+import { protect, restrictTo, protectDesigner } from "../../middlewares/auth";
+
 import {
-  createDesignerSchema,
+  adminCreateDesignerSchema,
   updateDesignerSchema,
+  adminStorefrontSchema,
 } from "./designer.schema";
+
 import {
   loginDesigner,
   logoutDesigner,
   getMe,
   changePassword,
+  refreshDesignerToken,
 } from "./designer.auth.controller";
+
+import {
+  getDesignerProfile,
+  updateDesignerProfile,
+} from "./designer.profile.controller";
+
 import { getDashboardStats } from "./designer.dashboard.controller";
+
 import {
   getDesignerProducts,
   getDesignerProductById,
@@ -32,82 +47,129 @@ import {
   updateDesignerProduct,
   deleteDesignerProduct,
 } from "./designer.product.controller";
-import { getDesignerOrders, getDesignerOrderById } from "./designer.order.controller";
+
+import {
+  getDesignerOrders,
+  getDesignerOrderById,
+} from "./designer.order.controller";
+
 import {
   getDesignerCoupons,
   createDesignerCoupon,
   updateDesignerCoupon,
   deleteDesignerCoupon,
 } from "./designer.coupon.controller";
+
 import { getDesignerAnalytics } from "./designer.analytics.controller";
 
 const router = express.Router();
 
-// Auth routes
+// ─────────────────────────────────────────────────────────────────────────────
+// Designer Auth routes
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.post("/auth/login", loginDesigner);
+router.post("/auth/refresh-token", refreshDesignerToken); // ← designer-isolated refresh
 router.post("/auth/logout", logoutDesigner);
 router.get("/auth/me", protectDesigner, getMe);
 router.post("/auth/change-password", protectDesigner, changePassword);
 
-// Dashboard routes
+// ─────────────────────────────────────────────────────────────────────────────
+// Designer Self-Service Profile
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get("/auth/profile", protectDesigner, getDesignerProfile);
+router.put("/auth/profile", protectDesigner, updateDesignerProfile);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Designer Dashboard
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.get("/dashboard/stats", protectDesigner, getDashboardStats);
 
-// Product routes
+// ─────────────────────────────────────────────────────────────────────────────
+// Designer Product routes (ownership enforced in controller)
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.get("/products", protectDesigner, getDesignerProducts);
 router.get("/products/:id", protectDesigner, getDesignerProductById);
 router.post("/products", protectDesigner, createDesignerProduct);
 router.put("/products/:id", protectDesigner, updateDesignerProduct);
 router.delete("/products/:id", protectDesigner, deleteDesignerProduct);
 
-// Order routes
+// ─────────────────────────────────────────────────────────────────────────────
+// Designer Order routes
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.get("/orders", protectDesigner, getDesignerOrders);
 router.get("/orders/:id", protectDesigner, getDesignerOrderById);
 
-// Coupon routes
+// ─────────────────────────────────────────────────────────────────────────────
+// Designer Coupon routes
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.get("/coupons", protectDesigner, getDesignerCoupons);
 router.post("/coupons", protectDesigner, createDesignerCoupon);
 router.put("/coupons/:id", protectDesigner, updateDesignerCoupon);
 router.delete("/coupons/:id", protectDesigner, deleteDesignerCoupon);
 
-// Analytics routes
+// ─────────────────────────────────────────────────────────────────────────────
+// Designer Analytics
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.get("/analytics", protectDesigner, getDesignerAnalytics);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Public designer routes
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.get("/favorites", getFavoriteDesigners);
-router.get(
-  "/admin",
-  protect,
-  restrictTo("admin", "superadmin"),
-  getAdminDesigners
-);
-router.get(
-  "/admin/:id",
-  protect,
-  restrictTo("admin", "superadmin"),
-  getAdminDesignerById
-);
 router.get("/slug/:slug", getDesignerBySlug);
 router.get("/", getAllDesigners);
 router.get("/:id", getDesignerById);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin Designer routes
+// ─────────────────────────────────────────────────────────────────────────────
+
+const adminGuard = [protect, restrictTo("admin", "superadmin")];
+
+// List & detail
+router.get("/admin", ...adminGuard, getAdminDesigners);
+router.get("/admin/:id", ...adminGuard, getAdminDesignerById);
+
+// Create (name + email + password only)
 router.post(
   "/",
-  protect,
-  restrictTo("admin", "superadmin"),
-  validate(createDesignerSchema),
+  ...adminGuard,
+  validate(adminCreateDesignerSchema),
   createDesigner
 );
+
+// Full update (admin)
 router.put(
   "/:id",
-  protect,
-  restrictTo("admin", "superadmin"),
+  ...adminGuard,
   validate(updateDesignerSchema),
   updateDesigner
 );
-router.delete(
-  "/:id",
-  protect,
-  restrictTo("admin", "superadmin"),
-  deleteDesigner
+
+// Storefront controls (isFeatured, isFavorite, isActive)
+router.put(
+  "/admin/:id/storefront",
+  ...adminGuard,
+  validate(adminStorefrontSchema),
+  updateDesignerStorefront
 );
+
+// Approval workflow
+router.put("/admin/:id/approve", ...adminGuard, approveDesigner);
+router.put("/admin/:id/reject", ...adminGuard, rejectDesigner);
+
+// Password reset
+router.post("/admin/:id/reset-password", ...adminGuard, adminResetPassword);
+
+// Delete
+router.delete("/:id", ...adminGuard, deleteDesigner);
 
 export default router;

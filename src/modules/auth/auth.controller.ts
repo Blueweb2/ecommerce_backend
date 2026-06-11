@@ -220,12 +220,12 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
     throw new AppError("Invalid credentials", 400);
   }
 
-  // ❌ Check inactive user
+  // Check inactive user
   if (!user.isActive) {
     throw new AppError("Account is deactivated", 403);
   }
 
-  // 🔐 Check password
+  //  Check password
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
@@ -260,7 +260,7 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
     });
   }
 
-  // 🚨 If phone exists but not verified (Safety check for legacy profiles):
+  //  If phone exists but not verified (Safety check for legacy profiles):
   if (user.phone && !user.phoneVerified) {
     const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
     user.phoneVerificationCode = phoneOtp;

@@ -52,7 +52,7 @@ export const createDesignerProduct = async (
     const designerId = (req as any).designer?.id;
     if (!designerId) return next(new AppError("Not authenticated", 401));
 
-    // Force designer ID to current logged-in designer
+    // Force designer ID to current logged-in designer from req.designer.id
     const productData = { ...req.body, designer: designerId };
 
     const product = await Product.create(productData);
