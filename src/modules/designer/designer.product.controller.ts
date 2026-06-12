@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { Product } from "../product/product.model";
 import { AppError } from "../../utils/AppError";
+import * as productService from "../product/product.service";
 
 export const getDesignerProducts = async (
   req: Request,
@@ -55,7 +56,7 @@ export const createDesignerProduct = async (
     // Force designer ID to current logged-in designer from req.designer.id
     const productData = { ...req.body, designer: designerId };
 
-    const product = await Product.create(productData);
+    const product = await productService.createProduct(productData);
 
     res.status(201).json({
       success: true,
@@ -82,15 +83,11 @@ export const updateDesignerProduct = async (
     const updateData = { ...req.body };
     delete updateData.designer;
 
-    product = await Product.findOneAndUpdate(
-      { _id: req.params.id, designer: designerId },
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const updatedProduct = await productService.updateProduct(req.params.id as string, updateData);
 
     res.status(200).json({
       success: true,
-      data: product,
+      data: updatedProduct,
     });
   } catch (error) {
     next(error);

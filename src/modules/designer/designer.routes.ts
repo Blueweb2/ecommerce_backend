@@ -62,6 +62,8 @@ import {
 
 import { getDesignerAnalytics } from "./designer.analytics.controller";
 
+import { getSignature as getCloudinarySignature } from "../cloudinary/cloudinary.controller";
+
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,6 +98,12 @@ router.get("/products/:id", protectDesigner, getDesignerProductById);
 router.post("/products", protectDesigner, createDesignerProduct);
 router.put("/products/:id", protectDesigner, updateDesignerProduct);
 router.delete("/products/:id", protectDesigner, deleteDesignerProduct);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Designer Cloudinary
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get("/cloudinary/signature", protectDesigner, getCloudinarySignature);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Designer Order routes
