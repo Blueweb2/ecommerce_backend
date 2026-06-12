@@ -5,7 +5,7 @@ import { sendResponse } from "../../utils/response";
 import {
   createDesignerService,
   getAdminDesignersService,
-  
+
   deleteDesignerService,
   getFavoriteDesignersService,
   getAllDesignersService,
@@ -48,7 +48,15 @@ export const getDesignerBySlug = asyncHandler(
       throw new AppError("Designer not found", 404);
     }
 
-    sendResponse(res, 200, "Designer fetched successfully", { designer });
+    const { Product } = await import("../product/product.model");
+    const products = await Product.find({
+      designer: designer._id,
+      isPublished: true,
+    })
+      .populate("category")
+      .populate("designer", "name brandName");
+
+    sendResponse(res, 200, "Designer fetched successfully", { designer, products });
   }
 );
 
@@ -79,7 +87,11 @@ export const getDesignerById = asyncHandler(
       throw new AppError("Designer not found", 404);
     }
 
-    sendResponse(res, 200, "Designer fetched successfully", { designer });
+    const { Product } = await import("../product/product.model");
+    const products = await Product.find({ designer: designer._id, isPublished: true }).populate("category").populate("designer");
+    console.log(products);
+
+    sendResponse(res, 200, "Designer fetched successfully", { designer, products });
   }
 );
 

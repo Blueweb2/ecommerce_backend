@@ -146,6 +146,7 @@ export const getNewProductsService = async ({
     sections: "new-in",
   })
     .select("_id name slug price discountPrice images brand description")
+    .populate("designer", "name brandName")
     .sort({ createdAt: -1 })
     .limit(normalizedLimit)
     .lean();

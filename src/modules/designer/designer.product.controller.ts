@@ -12,7 +12,7 @@ export const getDesignerProducts = async (
     const designerId = (req as any).designer?.id;
     if (!designerId) return next(new AppError("Not authenticated", 401));
 
-    const products = await Product.find({ designer: designerId }).sort({ createdAt: -1 });
+    const products = await Product.find({ designer: designerId }).sort({ createdAt: -1 }).populate("category").populate("designer");
 
     res.status(200).json({
       success: true,

@@ -155,7 +155,7 @@ export const mergeCart = async (
 
   const products = await Product.find({
     _id: { $in: productIds },
-  });
+  }).populate("category").populate("designer");
 
   const productMap = new Map(
     products.map((p) => [p._id.toString(), p])
