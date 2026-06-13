@@ -15,6 +15,7 @@ import {
   getSaleProducts,
   getRelatedProducts,
   
+  
 } from "./product.controller";
 
 import { upload } from "../../middlewares/upload";
@@ -38,6 +39,8 @@ router.get("/:id/variants", getProductVariantsHandler);
 router.get("/", getProductsHandler);
 router.get("/:id/related", getRelatedProducts);
 router.get("/:id", getProductHandler);
+
+
 
 
 // ======================================================

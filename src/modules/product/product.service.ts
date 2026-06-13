@@ -459,19 +459,56 @@ export const getFeaturedProducts = async () => {
 };
 
 
-export const searchProducts = async (query: string) => {
-  return await Product.find({
-    $and: [
-      { isPublished: true },
+// export const searchProducts = async (query: string) => {
+//   return await Product.find({
+//     $and: [
+//       { isPublished: true },
+//       {
+//         $or: [
+//           { name: { $regex: query, $options: "i" } },
+//           { description: { $regex: query, $options: "i" } },
+//           { brand: { $regex: query, $options: "i" } },
+//         ]
+//       }
+//     ],
+//   }).sort({ createdAt: -1 });
+// };
+
+export const searchProducts = async (
+  query: string
+) => {
+  console.log("SEARCH QUERY:", query);
+
+  const products = await Product.find({
+    isPublished: true,
+    $or: [
       {
-        $or: [
-          { name: { $regex: query, $options: "i" } },
-          { description: { $regex: query, $options: "i" } },
-          { brand: { $regex: query, $options: "i" } },
-        ]
-      }
+        name: {
+          $regex: query,
+          $options: "i",
+        },
+      },
+      {
+        description: {
+          $regex: query,
+          $options: "i",
+        },
+      },
+      {
+        brand: {
+          $regex: query,
+          $options: "i",
+        },
+      },
     ],
-  }).sort({ createdAt: -1 });
+  });
+
+  console.log(
+    "FOUND PRODUCTS:",
+    products.length
+  );
+
+  return products;
 };
 
 

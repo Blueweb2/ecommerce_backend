@@ -137,6 +137,8 @@ export const getRelatedProducts = asyncHandler(
   }
 );
 
+
+
 export const getSaleProducts = async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
