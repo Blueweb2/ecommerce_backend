@@ -127,14 +127,7 @@ router.delete("/coupons/:id", protectDesigner, deleteDesignerCoupon);
 
 router.get("/analytics", protectDesigner, getDesignerAnalytics);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Public designer routes
-// ─────────────────────────────────────────────────────────────────────────────
 
-router.get("/favorites", getFavoriteDesigners);
-router.get("/slug/:slug", getDesignerBySlug);
-router.get("/", getAllDesigners);
-router.get("/:id", getDesignerById);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin Designer routes
@@ -170,6 +163,8 @@ router.put(
   updateDesignerStorefront
 );
 
+
+
 // Approval workflow
 router.put("/admin/:id/approve", ...adminGuard, approveDesigner);
 router.put("/admin/:id/reject", ...adminGuard, rejectDesigner);
@@ -179,5 +174,14 @@ router.post("/admin/:id/reset-password", ...adminGuard, adminResetPassword);
 
 // Delete
 router.delete("/:id", ...adminGuard, deleteDesigner);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public designer routes
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get("/favorites", getFavoriteDesigners);
+router.get("/slug/:slug", getDesignerBySlug);
+router.get("/", getAllDesigners);
+router.get("/:id", getDesignerById);
 
 export default router;
