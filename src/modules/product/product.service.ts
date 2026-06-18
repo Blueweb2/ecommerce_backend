@@ -4,6 +4,10 @@ import { AppError } from "../../utils/AppError";
 import { deleteImageFromCloudinary } from "../cloudinary/cloudinary.service";
 import { generateSmartSKU } from "../../utils/sku/sku.generator";
 import { toStringId } from "../../utils/common/toStringId";
+import {
+  ensureDesignerCanManageCategory,
+  ProductActorContext,
+} from "./product.authorization";
 import slugify from "slugify";
 import mongoose from "mongoose";
 import { normalize as normAttr, normalizeKey } from "../../utils/attributes";
@@ -335,7 +339,15 @@ export const validateProductAttributesAndVariants = (
 //   });
 // };
 
-export const createProduct = async (data: CreateProductDTO) => {
+export const createProduct = async (
+  data: CreateProductDTO,
+  actor?: ProductActorContext
+) => {
+  await ensureDesignerCanManageCategory({
+    actor,
+    categoryId: data.category,
+  });
+
   //  SLUG
   const baseSlug = slugify(data.name, { lower: true, strict: true });
 
@@ -536,13 +548,19 @@ export const deleteSingleImage = async (
 
 export const updateProduct = async (
   id: string,
-  data: UpdateProductDTO
+  data: UpdateProductDTO,
+  actor?: ProductActorContext
 ) => {
   const existing = await Product.findById(id);
 
   if (!existing) {
     throw new AppError("Product not found", 404);
   }
+
+  await ensureDesignerCanManageCategory({
+    actor,
+    categoryId: data.category,
+  });
 
   //  Handle image replacement
   if (data.images && existing.images) {

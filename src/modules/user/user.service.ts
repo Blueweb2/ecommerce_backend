@@ -85,6 +85,8 @@ export const updateUser = async (id: string, data: UpdateUserDTO) => {
     }
   }
 
+ 
+
   const user = await User.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,

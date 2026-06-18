@@ -21,6 +21,7 @@ declare global {
 
       designer?: {
         id: string;
+        role: "designer";
       };
     }
   }
@@ -153,6 +154,7 @@ export const protectDesigner = async (
 
     req.designer = {
       id: designer._id.toString(),
+      role: "designer",
     };
 
     next();

@@ -73,6 +73,6 @@ const pendingUserSchema = new Schema<IPendingUser>(
 );
 
 // ✅ Create compound index or unique indexes if necessary, but keep it simple as TTL manages expiration
-pendingUserSchema.index({ email: 1 });
+pendingUserSchema.index({ email: 1 }, { unique: true });
 
 export const PendingUser = mongoose.model<IPendingUser>("PendingUser", pendingUserSchema);

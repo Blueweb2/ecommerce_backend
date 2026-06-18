@@ -9,6 +9,7 @@ import {
   createProductSchema,
   updateProductSchema,
 } from "./product.schema";
+import { ProductActorContext } from "./product.authorization";
 import * as productService from "./product.service";
 import {
   getNewProductsService,
@@ -24,6 +25,25 @@ const asString = (value: unknown): string | undefined => {
 
 const getParam = (param: string | string[]): string => {
   return Array.isArray(param) ? param[0] : param;
+};
+
+const getProductActorFromRequest = (
+  req: Request
+): ProductActorContext | undefined => {
+  const userRole = req.user?.role;
+
+  if (userRole === "admin" || userRole === "superadmin") {
+    return { role: userRole };
+  }
+
+  if (req.designer?.id) {
+    return {
+      role: "designer",
+      designerId: req.designer.id,
+    };
+  }
+
+  return undefined;
 };
 
 const parseJsonField = <T>(value: unknown): T | unknown => {
@@ -174,7 +194,10 @@ export const createProductHandler = asyncHandler(
     const raw = req.body as Record<string, unknown>;
     const parsedBody = parseProductPayload(raw);
     const validatedData = createProductSchema.parse(parsedBody);
-    const product = await productService.createProduct(validatedData);
+    const product = await productService.createProduct(
+      validatedData,
+      getProductActorFromRequest(req)
+    );
 
     sendResponse(
       res,
@@ -277,7 +300,11 @@ export const updateProductHandler = asyncHandler(
     const raw = req.body as Record<string, unknown>;
     const parsedBody = parseProductPayload(raw);
     const validatedData = updateProductSchema.parse(parsedBody);
-    const product = await productService.updateProduct(id, validatedData);
+    const product = await productService.updateProduct(
+      id,
+      validatedData,
+      getProductActorFromRequest(req)
+    );
 
     if (!product) {
       throw new AppError("Product not found", 404);
