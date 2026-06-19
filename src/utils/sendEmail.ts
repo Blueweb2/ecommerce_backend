@@ -13,7 +13,7 @@ export const sendEmail = async (
   const extractedOtp = otpMatch ? otpMatch[1] : null;
 
   console.log("\n==================================================");
-  console.log(`📧 [SIMULATED EMAIL]`);
+  console.log(` [SIMULATED EMAIL]`);
   console.log(`To:      ${to}`);
   console.log(`Subject: ${subject}`);
   if (extractedOtp) {
@@ -32,6 +32,6 @@ export const sendEmail = async (
       html,
     });
   } catch (error) {
-    console.error("⚠️ Resend email delivery failed (Logged to console instead):", error);
+    console.error(" Resend email delivery failed (Logged to console instead):", error);
   }
 };

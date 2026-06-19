@@ -15,8 +15,8 @@ export const getDesignerAnalytics = async (
     // Get all orders containing products from this designer
     const orders = await Order.find({ "items.designer": designerId });
 
-    console.log("DESIGNER:", (req as any).designer);
-    console.log("USER:", (req as any).user);
+    // console.log("DESIGNER:", (req as any).designer);
+    // console.log("USER:", (req as any).user);
 
     // Arrays to store trends
     const revenueTrend: any[] = [];
