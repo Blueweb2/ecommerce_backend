@@ -162,9 +162,11 @@ if (existingUser) {
   console.log(`\n📱 [SIMULATED SMS] Sent Phone Verification OTP to ${phone || "user"}: ${phoneOtp}\n`);
 
   // ✅ Response (NO TOKEN HERE)
+  const isDev = process.env.NODE_ENV !== "production";
   return res.status(201).json({
     success: true,
     message: "OTP sent to your email. Please verify your account.",
+    ...(isDev && { emailOtp, phoneOtp }), // 🔥 only in dev
   });
 });
 
@@ -208,12 +210,14 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
 
       console.log(`\n📱 [SIMULATED SMS] Sent Phone Verification OTP to ${pendingUser.phone || "user"}: ${phoneOtp}\n`);
 
+      const isDev = process.env.NODE_ENV !== "production";
       return res.json({
         success: true,
         emailVerified: pendingUser.emailVerified,
         phoneVerified: pendingUser.phoneVerified,
         message: "Registration pending. OTP sent to complete registration.",
         redirectVerify: true,
+        ...(isDev && { emailOtp, phoneOtp }), // 🔥 only in dev
       });
     }
 
@@ -466,9 +470,11 @@ export const resendOtpHandler = asyncHandler(
         `
       );
 
+      const isDev = process.env.NODE_ENV !== "production";
       return res.json({
         success: true,
         message: "OTP resent successfully",
+        ...(isDev && { otp }), // 🔥 only in dev
       });
     }
 
@@ -496,9 +502,11 @@ export const resendOtpHandler = asyncHandler(
       `
     );
 
+    const isDev = process.env.NODE_ENV !== "production";
     return res.json({
       success: true,
       message: "OTP resent successfully",
+      ...(isDev && { otp }), // 🔥 only in dev
     });
   }
 );
@@ -640,9 +648,11 @@ export const resendPhoneOtpHandler = asyncHandler(
 
       console.log(`\n📱 [SIMULATED SMS] Resent Phone Verification OTP to ${user.phone || "user"}: ${phoneOtp}\n`);
 
+      const isDev = process.env.NODE_ENV !== "production";
       return res.json({
         success: true,
         message: "Phone OTP resent successfully",
+        ...(isDev && { phoneOtp }), // 🔥 only in dev
       });
     }
 
@@ -659,9 +669,11 @@ export const resendPhoneOtpHandler = asyncHandler(
 
     console.log(`\n📱 [SIMULATED SMS] Resent Phone Verification OTP to ${pendingUser.phone || "user"}: ${phoneOtp}\n`);
 
+    const isDev = process.env.NODE_ENV !== "production";
     return res.json({
       success: true,
       message: "Phone OTP resent successfully",
+      ...(isDev && { phoneOtp }), // 🔥 only in dev
     });
   }
 );
