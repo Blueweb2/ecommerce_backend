@@ -265,6 +265,7 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
   }
 
   //  If phone exists but not verified (Safety check for legacy profiles):
+  /*
   if (user.phone && !user.phoneVerified) {
     const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
     user.phoneVerificationCode = phoneOtp;
@@ -281,6 +282,7 @@ export const loginHandler = asyncHandler(async (req: Request, res: Response) => 
       message: "Mobile number verification required. OTP sent to your phone.",
     });
   }
+  */
 
   // 🔥 Generate OTP for standard fully verified login
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -386,6 +388,7 @@ export const verifyOtpHandler = asyncHandler(
     await pendingUser.save();
 
     // 🚨 Sequential Phone Verification Check
+    /*
     if (pendingUser.phone && !pendingUser.phoneVerified) {
       return res.json({
         success: true,
@@ -394,6 +397,7 @@ export const verifyOtpHandler = asyncHandler(
         message: "Email verified. Please verify your mobile number.",
       });
     }
+    */
 
     // Create User (both verified)
     const newUser = await User.create({
