@@ -16,7 +16,8 @@ const phoneSchema = z
   );
 
 export const shippingAddressSchema = z.object({
-  fullName: z.string().trim().min(2, "Full name is required"),
+  firstName: z.string().trim().min(2, "First name is required"),
+  lastName: z.string().optional(),
   phone: phoneSchema,
   street: z.string().trim().min(5, "Street is required"),
   city: z.string().trim().min(2, "City is required"),

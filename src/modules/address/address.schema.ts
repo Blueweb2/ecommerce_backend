@@ -16,7 +16,8 @@ const phoneSchema = z
   );
 
 const addressBaseSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().optional(),
   phone: phoneSchema,
   street: z.string().min(3, "Street must be at least 3 characters"),
   city: z.string().min(2, "City is required"),

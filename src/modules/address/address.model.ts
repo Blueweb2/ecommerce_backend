@@ -2,7 +2,8 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IAddress extends Document {
   user: mongoose.Types.ObjectId;
-  fullName: string;
+  firstName: string;
+  lastName?: string;
   phone: string;
   street: string;
   city: string;
@@ -22,9 +23,14 @@ const addressSchema = new Schema<IAddress>(
       required: true,
       index: true,
     },
-    fullName: {
+    firstName: {
       type: String,
       required: true,
+      trim: true,
+    },
+    lastName: {
+      type: String,
+      default: "",
       trim: true,
     },
     phone: {

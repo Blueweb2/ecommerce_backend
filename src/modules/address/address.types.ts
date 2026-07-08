@@ -1,5 +1,6 @@
 export interface CreateAddressDTO {
-  fullName: string;
+  firstName: string;
+  lastName?: string;
   phone: string;
   street: string;
   city: string;
@@ -14,7 +15,8 @@ export interface UpdateAddressDTO extends Partial<CreateAddressDTO> {}
 export interface AddressResponse {
   _id: string;
   user: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   street: string;
   city: string;
