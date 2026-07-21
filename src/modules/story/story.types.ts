@@ -1,6 +1,7 @@
 // src/modules/story/story.types.ts
 
 import { Document } from "mongoose";
+import { StoryCategory } from "../../constants/storyCategories";
 
 export interface IStoryImage {
   url: string;
@@ -21,6 +22,7 @@ export interface IStorySection {
 export interface IStory extends Document {
   title: string;
   slug: string;
+  category: StoryCategory;
   excerpt?: string;
   author?: string;
   publishDate?: Date;

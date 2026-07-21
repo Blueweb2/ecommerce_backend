@@ -2,6 +2,10 @@
 
 import mongoose from "mongoose";
 import slugify from "slugify";
+import {
+  DEFAULT_STORY_CATEGORY,
+  STORY_CATEGORIES,
+} from "../../constants/storyCategories";
 import { IStory } from "./story.types";
 
 const storySectionSchema = new mongoose.Schema({
@@ -31,6 +35,12 @@ const storySchema = new mongoose.Schema<IStory>(
       lowercase: true,
       trim: true,
     },
+    category: {
+      type: String,
+      enum: STORY_CATEGORIES,
+      required: true,
+      default: DEFAULT_STORY_CATEGORY,
+    },
     excerpt: { type: String },
     author: { type: String },
     publishDate: { type: Date },
@@ -43,10 +53,34 @@ const storySchema = new mongoose.Schema<IStory>(
     sections: [storySectionSchema],
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        if (!ret.category) {
+          ret.category = DEFAULT_STORY_CATEGORY;
+        }
+
+        return ret;
+      },
+    },
+    toObject: {
+      transform: (_doc, ret) => {
+        if (!ret.category) {
+          ret.category = DEFAULT_STORY_CATEGORY;
+        }
+
+        return ret;
+      },
+    },
+  }
 );
 
 storySchema.pre("validate", async function () {
+  if (!this.category) {
+    this.category = DEFAULT_STORY_CATEGORY;
+  }
+
   if (!this.isNew || !this.isModified("title") || this.isModified("slug")) {
     return;
   }

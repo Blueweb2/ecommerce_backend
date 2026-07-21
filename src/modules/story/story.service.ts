@@ -3,15 +3,76 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
 import cloudinary from "../../config/cloudinary";
+import {
+  DEFAULT_STORY_CATEGORY,
+  StoryCategory,
+} from "../../constants/storyCategories";
 import { AppError } from "../../utils/AppError";
 import { deleteImageFromCloudinary } from "../cloudinary/cloudinary.service";
 import { Story } from "./story.model";
 import { IStoryImage } from "./story.types";
-import { UpdateStoryInput } from "./story.validation";
+import { CreateStoryInput, UpdateStoryInput } from "./story.validation";
 
-export const createStoryService = async (data: any) => {
+export const createStoryService = async (data: CreateStoryInput) => {
   const story = await Story.create(data);
   return story;
+};
+
+export interface GetStoriesFilters {
+  category?: StoryCategory;
+  featured?: boolean;
+  isActive?: boolean;
+}
+
+const STORY_LIST_SORT = {
+  publishDate: -1 as const,
+  createdAt: -1 as const,
+};
+
+const STORY_NEWEST_SORT = {
+  publishDate: -1 as const,
+  createdAt: -1 as const,
+};
+
+const buildCategoryFilter = (
+  category?: StoryCategory
+): Record<string, unknown> | undefined => {
+  if (!category) {
+    return undefined;
+  }
+
+  if (category === DEFAULT_STORY_CATEGORY) {
+    return {
+      $or: [
+        { category: DEFAULT_STORY_CATEGORY },
+        { category: { $exists: false } },
+        { category: null },
+      ],
+    };
+  }
+
+  return { category };
+};
+
+const buildStoryFilters = (
+  filters: GetStoriesFilters = {}
+): Record<string, unknown> => {
+  const query: Record<string, unknown> = {};
+  const categoryFilter = buildCategoryFilter(filters.category);
+
+  if (categoryFilter) {
+    Object.assign(query, categoryFilter);
+  }
+
+  if (filters.featured !== undefined) {
+    query.featured = filters.featured;
+  }
+
+  if (filters.isActive !== undefined) {
+    query.isActive = filters.isActive;
+  }
+
+  return query;
 };
 
 export const getStoryBySlugService = async (slug: string) => {
@@ -26,12 +87,66 @@ export const getStoryBySlugService = async (slug: string) => {
   return story;
 };
 
-export const getStoriesService = async () => {
-  const stories = await Story.find({ isActive: true }).sort({
-    createdAt: -1,
-  });
+export const getStoriesService = async (
+  filters: GetStoriesFilters = {}
+) => {
+  const stories = await Story.find(buildStoryFilters(filters)).sort(
+    STORY_LIST_SORT
+  );
 
   return stories;
+};
+
+export const getFeaturedStoryByCategory = async (category: StoryCategory) => {
+  const featuredStory = await Story.findOne(
+    buildStoryFilters({
+      category,
+      featured: true,
+      isActive: true,
+    })
+  )
+    .sort(STORY_NEWEST_SORT)
+    .populate("sections.products");
+
+  return featuredStory;
+};
+
+export const getStoriesByCategoryService = async (category: StoryCategory) => {
+  const featuredStory = await getFeaturedStoryByCategory(category);
+  const baseFilters = buildStoryFilters({
+    category,
+    isActive: true,
+  });
+
+  const stories = await Story.find(
+    featuredStory
+      ? {
+          ...baseFilters,
+          _id: { $ne: featuredStory._id },
+        }
+      : baseFilters
+  )
+    .sort(STORY_NEWEST_SORT)
+    .populate("sections.products");
+
+  return featuredStory ? [featuredStory, ...stories] : stories;
+};
+
+export const getRelatedStoriesService = async (
+  currentSlug: string,
+  category: StoryCategory,
+  limit = 3
+) => {
+  const relatedStories = await Story.find(
+    buildStoryFilters({ category, isActive: true }),
+    { title: 1, slug: 1, excerpt: 1, heroImage: 1, category: 1, publishDate: 1, createdAt: 1, featured: 1 }
+  )
+    .sort(STORY_NEWEST_SORT)
+    .where("slug")
+    .ne(currentSlug)
+    .limit(limit);
+
+  return relatedStories;
 };
 
 export const deleteStoryService = async (id: string) => {
@@ -140,12 +255,12 @@ export const updateStoryService = async (
       story.title = data.title;
     }
 
-    if (hasOwn("title") && data.title !== undefined) {
-      story.title = data.title;
-    }
-
     if (hasOwn("excerpt") && data.excerpt !== undefined) {
       story.excerpt = data.excerpt;
+    }
+
+    if (hasOwn("category") && data.category !== undefined) {
+      story.category = data.category;
     }
 
     if (hasOwn("author") && data.author !== undefined) {

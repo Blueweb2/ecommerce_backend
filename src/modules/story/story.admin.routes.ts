@@ -7,6 +7,8 @@ import {
   updateStory,
   getStoryById,
 } from "./story.controller";
+import { validate } from "../../middlewares/validate";
+import { createStorySchema } from "./story.validation";
 
 const router = express.Router();
 
@@ -14,7 +16,7 @@ const adminOnly = [protect, restrictTo("admin", "superadmin")];
 
 router.get("/", ...adminOnly, getStories);
 router.get("/:id", ...adminOnly, getStoryById);
-router.post("/", ...adminOnly, createStory);
+router.post("/", ...adminOnly, validate(createStorySchema), createStory);
 router.put("/:id", ...adminOnly, updateStory);
 router.delete("/:id", ...adminOnly, deleteStory);
 

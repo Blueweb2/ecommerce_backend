@@ -5,12 +5,18 @@ import { ZodError } from "zod";
 import { AppError } from "../../utils/AppError";
 import {
   createStoryService,
+  getFeaturedStoryByCategory,
+  getStoriesByCategoryService,
   getStoriesService,
   deleteStoryService,
   getStoryBySlugService,
   updateStoryService,
+  getRelatedStoriesService,
 } from "./story.service";
-import { updateStorySchema } from "./story.validation";
+import {
+  storyCategorySchema,
+  updateStorySchema,
+} from "./story.validation";
 import { Story } from "./story.model";
 
 const getParamValue = (
@@ -77,6 +83,13 @@ export const createStory = async (req: Request, res: Response) => {
       data: story,
     });
   } catch (error: any) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to create story",
@@ -86,7 +99,7 @@ export const createStory = async (req: Request, res: Response) => {
 
 export const getStories = async (_req: Request, res: Response) => {
   try {
-    const stories = await getStoriesService();
+    const stories = await getStoriesService({ isActive: true });
 
     return res.json({
       success: true,
@@ -96,6 +109,69 @@ export const getStories = async (_req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch stories",
+    });
+  }
+};
+
+export const getStoriesByCategory = async (req: Request, res: Response) => {
+  try {
+    const category = getParamValue(req.params.category);
+    const parsedCategory = storyCategorySchema.safeParse(category);
+
+    if (!parsedCategory.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: parsedCategory.error.issues.map((issue) => ({
+          field: issue.path.map(String).join(".") || "category",
+          message: issue.message,
+        })),
+      });
+    }
+
+    const stories = await getStoriesByCategoryService(parsedCategory.data);
+
+    return res.json({
+      success: true,
+      data: stories,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch stories by category",
+    });
+  }
+};
+
+export const getFeaturedStoryForCategory = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const category = getParamValue(req.params.category);
+    const parsedCategory = storyCategorySchema.safeParse(category);
+
+    if (!parsedCategory.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: parsedCategory.error.issues.map((issue) => ({
+          field: issue.path.map(String).join(".") || "category",
+          message: issue.message,
+        })),
+      });
+    }
+
+    const story = await getFeaturedStoryByCategory(parsedCategory.data);
+
+    return res.json({
+      success: true,
+      data: story,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch featured story",
     });
   }
 };
@@ -174,6 +250,47 @@ export const updateStory = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to update story",
+    });
+  }
+};
+
+export const getRelatedStories = async (req: Request, res: Response) => {
+  try {
+    const slug = getParamValue(req.params.slug);
+    const category = getParamValue(req.query.category as string | undefined);
+    const rawLimit = getParamValue(req.query.limit as string | undefined);
+    const limit = rawLimit ? parseInt(rawLimit, 10) : 3;
+
+    if (!slug) {
+      return res.status(400).json({
+        success: false,
+        message: "Slug is required",
+      });
+    }
+
+    const parsedCategory = storyCategorySchema.safeParse(category);
+
+    if (!parsedCategory.success) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid category is required",
+      });
+    }
+
+    const stories = await getRelatedStoriesService(
+      slug,
+      parsedCategory.data,
+      isNaN(limit) ? 3 : Math.min(limit, 10)
+    );
+
+    return res.json({
+      success: true,
+      data: stories,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch related stories",
     });
   }
 };

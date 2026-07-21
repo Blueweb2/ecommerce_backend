@@ -1,6 +1,12 @@
 // src/modules/story/story.validation.ts
 
 import { z } from "zod";
+import { STORY_CATEGORIES } from "../../constants/storyCategories";
+
+export const storyCategorySchema = z.enum(STORY_CATEGORIES, {
+  error: (issue) =>
+    issue.input === undefined ? "Category is required" : "Invalid story category",
+});
 
 export const storySectionValidation = z.object({
   layout: z.enum(["image-left", "image-right", "full-image", "text"]),
@@ -18,6 +24,8 @@ export const storySectionValidation = z.object({
 
 export const createStorySchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
+  slug: z.string().trim().optional(),
+  category: storyCategorySchema,
   excerpt: z.string().optional(),
   author: z.string().optional(),
   publishDate: z.string().optional(),
@@ -28,7 +36,7 @@ export const createStorySchema = z.object({
     alt: z.string().optional(),
   }),
   sections: z.array(storySectionValidation).optional().default([]),
-  isActive: z.boolean().optional(),
+  isActive: z.boolean().optional().default(true),
 });
 
 const optionalTrimmedString = (field: string) =>
@@ -51,6 +59,7 @@ export const updateStorySchema = z
   .object({
     title: optionalTrimmedString("Title"),
     slug: optionalTrimmedString("Slug"),
+    category: storyCategorySchema.optional(),
     excerpt: z.string().optional(),
     author: z.string().optional(),
     publishDate: z.string().optional(),
@@ -60,4 +69,5 @@ export const updateStorySchema = z
     sections: z.array(storySectionValidation).optional(),
   });
 
+export type CreateStoryInput = z.infer<typeof createStorySchema>;
 export type UpdateStoryInput = z.infer<typeof updateStorySchema>;
