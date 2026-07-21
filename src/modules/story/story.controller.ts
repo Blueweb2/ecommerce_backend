@@ -1,12 +1,16 @@
 // src/modules/story/story.controller.ts
 
 import { Request, Response } from "express";
+import { ZodError } from "zod";
+import { AppError } from "../../utils/AppError";
 import {
   createStoryService,
   getStoriesService,
   deleteStoryService,
   getStoryBySlugService,
+  updateStoryService,
 } from "./story.service";
+import { updateStorySchema } from "./story.validation";
 import { Story } from "./story.model";
 
 const getParamValue = (
@@ -29,53 +33,73 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
 
     const story = await getStoryBySlugService(slug);
 
-    res.json({
+    return res.json({
       success: true,
       data: story,
     });
   } catch (error: any) {
-    res.status(404).json({
+    return res.status(404).json({
       success: false,
       message: error.message || "Story not found",
     });
   }
-};;
+};
 
-// 🔥 CREATE
+export const getStoryById = async (req: Request, res: Response) => {
+  try {
+    const id = getParamValue(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "ID is required" });
+    }
+
+    const story = await Story.findById(id).populate("sections.products");
+
+    if (!story) {
+      return res.status(404).json({ success: false, message: "Story not found" });
+    }
+
+    return res.json({ success: true, data: story });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch story",
+    });
+  }
+};
+
 export const createStory = async (req: Request, res: Response) => {
   try {
     const story = await createStoryService(req.body);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: story,
     });
   } catch (error: any) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message || "Failed to create story",
     });
   }
 };
 
-// 🔥 GET ALL
 export const getStories = async (_req: Request, res: Response) => {
   try {
     const stories = await getStoriesService();
 
-    res.json({
+    return res.json({
       success: true,
       data: stories,
     });
-  } catch (error: any) {
-    res.status(500).json({
+  } catch (_error: any) {
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch stories",
     });
   }
 };
 
-// 🔥 DELETE
 export const deleteStory = async (req: Request, res: Response) => {
   try {
     const id = getParamValue(req.params.id);
@@ -89,14 +113,67 @@ export const deleteStory = async (req: Request, res: Response) => {
 
     await deleteStoryService(id);
 
-    res.json({
+    return res.json({
       success: true,
       message: "Story deleted successfully",
     });
   } catch (error: any) {
-    res.status(404).json({
+    return res.status(404).json({
       success: false,
       message: error.message || "Delete failed",
+    });
+  }
+};
+
+export const updateStory = async (req: Request, res: Response) => {
+  try {
+    const id = getParamValue(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Story id is required",
+      });
+    }
+
+    const validatedData = updateStorySchema.parse(req.body);
+
+    if (!req.file && Object.keys(validatedData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one field is required to update the story",
+      });
+    }
+
+    const updatedStory = await updateStoryService(id, validatedData, req.file);
+
+    return res.status(200).json({
+      success: true,
+      message: "Story updated successfully",
+      data: updatedStory,
+    });
+  } catch (error: any) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: error.issues.map((issue) => ({
+          field: issue.path.map(String).join(".") || "root",
+          message: issue.message,
+        })),
+      });
+    }
+
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update story",
     });
   }
 };
