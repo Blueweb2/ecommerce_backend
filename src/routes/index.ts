@@ -16,6 +16,7 @@ import storyAdminRoutes from "../modules/story/story.admin.routes";
 import newsletterRoutes from "../modules/newsletter/newsletter.routes";
 import designerRoutes from "../modules/designer/designer.routes";
 import promoRoutes from "../modules/promo/promo.routes";
+import deliveryRoutes from "../modules/delivery/delivery.routes";
 
 
 const router = Router();
@@ -40,5 +41,5 @@ router.use("/address", addressRoutes);
 router.use("/wishlist", wishlistRoutes);
 router.use("/cloudinary", cloudinaryRoutes);
 router.use("/banner", bannerRoutes);
-
+router.use("/delivery", deliveryRoutes);
 export default router;

@@ -11,7 +11,8 @@ export const createPromoHandler = asyncHandler(async (req: Request, res: Respons
 });
 
 export const updatePromoHandler = asyncHandler(async (req: Request, res: Response) => {
-  const promo = await promoService.updatePromo(req.params.id as string, req.body);
+  const id = String(req.params.id);
+  const promo = await promoService.updatePromo(id, req.body);
   res.status(200).json({
     success: true,
     data: promo,
@@ -27,7 +28,8 @@ export const getAllPromosHandler = asyncHandler(async (req: Request, res: Respon
 });
 
 export const getPromoByIdHandler = asyncHandler(async (req: Request, res: Response) => {
-  const promo = await promoService.getPromoById(req.params.id as string);
+  const id = String(req.params.id);
+  const promo = await promoService.getPromoById(id);
   res.status(200).json({
     success: true,
     data: promo,
@@ -35,7 +37,8 @@ export const getPromoByIdHandler = asyncHandler(async (req: Request, res: Respon
 });
 
 export const deletePromoHandler = asyncHandler(async (req: Request, res: Response) => {
-  await promoService.deletePromo(req.params.id as string);
+  const id = String(req.params.id);
+  await promoService.deletePromo(id);
   res.status(204).json({
     success: true,
     data: null,
@@ -51,10 +54,9 @@ export const validatePromoHandler = asyncHandler(async (req: Request, res: Respo
   });
 });
 
-
-
 export const sendPromoMailHandler = asyncHandler(async (req: Request, res: Response) => {
-  await promoService.sendPromoMail(req.params.id as string);
+  const id = String(req.params.id);
+  await promoService.sendPromoMail(id);
 
   res.status(200).json({
     success: true,

@@ -36,4 +36,17 @@ export const env = {
 
    RESEND_API_KEY:
     process.env.RESEND_API_KEY || "",
+
+  SHIPROCKET_EMAIL: process.env.SHIPROCKET_EMAIL || "",
+  SHIPROCKET_PASSWORD: process.env.SHIPROCKET_PASSWORD || "",
+  SHIPROCKET_BASE_URL:
+    process.env.SHIPROCKET_BASE_URL ||
+    "https://apiv2.shiprocket.in/v1/external",
+  SHIPROCKET_PICKUP_LOCATION:
+    process.env.SHIPROCKET_PICKUP_LOCATION || "Primary",
+  SHIPROCKET_PICKUP_PINCODE:
+    process.env.SHIPROCKET_PICKUP_PINCODE || "679329",
+  SHIPROCKET_WEBHOOK_SECRET:
+    process.env.SHIPROCKET_WEBHOOK_SECRET || "",
 };
+

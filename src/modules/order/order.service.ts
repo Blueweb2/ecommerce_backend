@@ -1,4 +1,4 @@
-import { Order } from "./order.model";
+import { Order, IOrder } from "./order.model";
 import { Cart } from "../cart/cart.model";
 import { Product } from "../product/product.model";
 import { CreateOrderDTO } from "./order.types";
@@ -6,6 +6,7 @@ import { AppError } from "../../utils/AppError";
 import { calculateCartTotals } from "../../utils/pricing";
 import { User } from "../user/user.model";
 import * as promoService from "../promo/promo.service";
+import { createShiprocketOrderForOrder } from "../delivery/delivery.service";
 
 import Razorpay from "razorpay";
 import { env } from "../../config/env";
@@ -266,7 +267,7 @@ export const createOrder = async (userId: string | undefined, data: CreateOrderD
     }
 
     // 🔥 CREATE ORDER
-    const order = await Order.create(
+    const ordersCreated = (await Order.create(
       [
         {
           user: data.isGuestOrder ? undefined : userId,
@@ -289,9 +290,13 @@ export const createOrder = async (userId: string | undefined, data: CreateOrderD
         },
       ],
       { session }
-    );
+    )) as unknown as IOrder[];
 
-    const createdOrder = order[0];
+    const createdOrder = ordersCreated[0];
+
+    if (!createdOrder) {
+      throw new AppError("Failed to create order document", 500);
+    }
 
     /* =========================
        🟢 COD FLOW
@@ -358,6 +363,12 @@ export const createOrder = async (userId: string | undefined, data: CreateOrderD
     await session.commitTransaction();
     session.endSession();
 
+    if (data.paymentMethod === "cod") {
+      createShiprocketOrderForOrder(createdOrder._id.toString()).catch((err) => {
+        console.error("[Shiprocket Auto-Create Error COD]:", err.message);
+      });
+    }
+
     return createdOrder;
 
   } catch (error) {
@@ -407,6 +418,11 @@ export const markOrderPaid = async (
       { items: [], totalPrice: 0, totalGstAmount: 0, totalQuantity: 0 }
     );
   }
+
+  // Safely trigger Shiprocket order creation
+  createShiprocketOrderForOrder(order._id.toString()).catch((err) => {
+    console.error("[Shiprocket Auto-Create Error Paid Order]:", err.message);
+  });
 
   return order;
 };

@@ -18,6 +18,11 @@ export interface IProductVariant {
 
   stock: number;
   sku?: string;
+  weight?: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  hsn?: string;
   images?: IProductImage[];
   isActive: boolean;
 
@@ -42,6 +47,12 @@ export interface IProduct extends Document {
   keyFeatures: string[];
   price: number;
   discountPrice?: number;
+
+  weight?: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  hsn?: string;
 
   isFabric: boolean;
   unit: string;
@@ -116,6 +127,12 @@ const variantSchema = new Schema<IProductVariant>(
       uppercase: true,
     },
 
+    weight: { type: Number, min: 0 },
+    length: { type: Number, min: 0 },
+    width: { type: Number, min: 0 },
+    height: { type: Number, min: 0 },
+    hsn: { type: String, trim: true },
+
     images: [
       {
         url: String,
@@ -163,6 +180,12 @@ const productSchema = new Schema<IProduct>(
       trim: true,
       default: "",
     },
+
+    weight: { type: Number, min: 0, default: 0.5 },
+    length: { type: Number, min: 0, default: 10 },
+    width: { type: Number, min: 0, default: 10 },
+    height: { type: Number, min: 0, default: 10 },
+    hsn: { type: String, trim: true, default: "" },
 
     customizable: {
       isCustomizable: {

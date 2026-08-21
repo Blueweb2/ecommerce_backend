@@ -14,11 +14,34 @@ export interface IOrderItem {
   }[];
 }
 
+export interface IDeliveryDetails {
+  shipmentId?: string;
+  awbCode?: string;
+  courierName?: string;
+  courierId?: number;
+
+  labelUrl?: string;
+  trackingUrl?: string;
+
+  estimatedDeliveryDate?: Date;
+
+  currentStatus?: string;
+
+  shippedAt?: Date;
+  deliveredAt?: Date;
+
+  pickupScheduledAt?: Date;
+
+  lastTrackingUpdate?: Date;
+}
+
 export interface IOrder extends Document {
   user?: mongoose.Types.ObjectId;
   isGuestOrder: boolean;
   guestEmail?: string;
   items: IOrderItem[];
+
+  deliveryDetails?: IDeliveryDetails;
 
   totalPrice: number;
   totalGstAmount: number;
@@ -126,6 +149,64 @@ const shippingAddressSchema = new Schema(
     country: { type: String, required: true },
   },
   { _id: false }
+);
+
+
+const deliveryDetailsSchema = new Schema(
+  {
+    shipmentId: {
+      type: String,
+      index: true,
+    },
+
+    awbCode: {
+      type: String,
+      index: true,
+    },
+
+    courierName: {
+      type: String,
+    },
+
+    courierId: {
+      type: Number,
+    },
+
+    labelUrl: {
+      type: String,
+    },
+
+    trackingUrl: {
+      type: String,
+    },
+
+    estimatedDeliveryDate: {
+      type: Date,
+    },
+
+    currentStatus: {
+      type: String,
+    },
+
+    shippedAt: {
+      type: Date,
+    },
+
+    deliveredAt: {
+      type: Date,
+    },
+
+    pickupScheduledAt: {
+      type: Date,
+    },
+
+    lastTrackingUpdate: {
+      type: Date,
+    },
+  },
+  {
+    _id: false,
+  }
 );
 
 /* 🔹 Order */
